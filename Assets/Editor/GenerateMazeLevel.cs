@@ -175,6 +175,18 @@ public static class GenerateMazeLevel
         box.size = new Vector3(HoleSize, 4f, HoleSize);
         exitTriggerGO.AddComponent<ExitTrigger>();
 
+        GameObject exitVoid = GameObject.CreatePrimitive(PrimitiveType.Cube);
+        exitVoid.name = "ExitVoid";
+        exitVoid.transform.SetParent(exitTriggerGO.transform, false);
+        exitVoid.transform.localPosition = Vector3.zero;
+        exitVoid.transform.localScale = box.size;
+        Object.DestroyImmediate(exitVoid.GetComponent<Collider>()); // visual only, the trigger's own collider handles detection
+
+        Material blackMat = new Material(Shader.Find("Universal Render Pipeline/Unlit"));
+        if (blackMat.HasProperty("_BaseColor")) blackMat.SetColor("_BaseColor", Color.black);
+        if (blackMat.HasProperty("_Color")) blackMat.SetColor("_Color", Color.black);
+        exitVoid.GetComponent<MeshRenderer>().sharedMaterial = blackMat;
+
         GameObject timerGO = new GameObject("GameTimer");
         timerGO.transform.SetParent(root.transform);
         timerGO.AddComponent<GameTimer>();

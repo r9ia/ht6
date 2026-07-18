@@ -6,16 +6,25 @@ public class FirstPersonController : MonoBehaviour
 {
     [SerializeField] private Transform cameraTransform;
     [SerializeField] private float moveSpeed = 5f;
+    [SerializeField] private float sprintSpeed = 9f;
     [SerializeField] private float mouseSensitivity = 0.1f;
     [SerializeField] private float gravity = -9.81f;
+
+    [SerializeField] private float maxStamina = 100f;
+    [SerializeField] private float staminaDrainPerSecond = 25f;
+    [SerializeField] private float staminaRegenPerSecond = 15f;
+    [SerializeField] private float minStaminaToStartSprint = 15f;
 
     private CharacterController controller;
     private float pitch;
     private float verticalVelocity;
+    private float currentStamina;
+    private bool isSprinting;
 
     private void Awake()
     {
         controller = GetComponent<CharacterController>();
+        currentStamina = maxStamina;
     }
 
     private void Start()
@@ -59,7 +68,29 @@ public class FirstPersonController : MonoBehaviour
         if (keyboard.dKey.isPressed) input.x += 1f;
         input = Vector2.ClampMagnitude(input, 1f);
 
-        Vector3 move = (transform.right * input.x + transform.forward * input.y) * moveSpeed;
+        bool wantsToSprint = keyboard.leftShiftKey.isPressed && input.sqrMagnitude > 0f;
+
+        if (wantsToSprint && !isSprinting && currentStamina > minStaminaToStartSprint)
+        {
+            isSprinting = true;
+        }
+
+        if (isSprinting && (!wantsToSprint || currentStamina <= 0f))
+        {
+            isSprinting = false;
+        }
+
+        if (isSprinting)
+        {
+            currentStamina = Mathf.Max(0f, currentStamina - staminaDrainPerSecond * Time.deltaTime);
+        }
+        else
+        {
+            currentStamina = Mathf.Min(maxStamina, currentStamina + staminaRegenPerSecond * Time.deltaTime);
+        }
+
+        float speed = isSprinting ? sprintSpeed : moveSpeed;
+        Vector3 move = (transform.right * input.x + transform.forward * input.y) * speed;
 
         if (controller.isGrounded && verticalVelocity < 0f)
         {
@@ -70,5 +101,24 @@ public class FirstPersonController : MonoBehaviour
         move.y = verticalVelocity;
 
         controller.Move(move * Time.deltaTime);
+    }
+
+    private void OnGUI()
+    {
+        if (!isSprinting) return;
+
+        float barWidth = 220f;
+        float barHeight = 18f;
+        float x = Screen.width / 2f - barWidth / 2f;
+        float y = Screen.height - 60f;
+
+        GUI.color = new Color(0f, 0f, 0f, 0.6f);
+        GUI.DrawTexture(new Rect(x, y, barWidth, barHeight), Texture2D.whiteTexture);
+
+        float fillRatio = currentStamina / maxStamina;
+        GUI.color = Color.yellow;
+        GUI.DrawTexture(new Rect(x, y, barWidth * fillRatio, barHeight), Texture2D.whiteTexture);
+
+        GUI.color = Color.white;
     }
 }
