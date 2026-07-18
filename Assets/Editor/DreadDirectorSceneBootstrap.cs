@@ -19,7 +19,7 @@ namespace DreadDirector.Editor
         private const string ScenePath = "Assets/Scenes/DreadDirectorNightWatch.unity";
         private const string GeneratedFolder = "Assets/Generated/DreadDirector";
         private const string AutomaticBuildRevisionKey = "DreadDirector.AutomaticSceneBuildRevision";
-        private const string AutomaticBuildRevision = "backrooms-procedural-v9";
+        private const string AutomaticBuildRevision = "backrooms-procedural-v10";
 
         [InitializeOnLoadMethod]
         private static void ScheduleMissingSceneBuild()
@@ -59,10 +59,10 @@ namespace DreadDirector.Editor
             var scene = EditorSceneManager.NewScene(NewSceneSetup.EmptyScene, NewSceneMode.Single);
             RenderSettings.fog = true;
             RenderSettings.fogMode = FogMode.ExponentialSquared;
-            RenderSettings.fogColor = new Color(0.11f, 0.11f, 0.088f);
-            RenderSettings.fogDensity = 0.033f;
+            RenderSettings.fogColor = new Color(0.105f, 0.105f, 0.083f);
+            RenderSettings.fogDensity = 0.037f;
             RenderSettings.ambientMode = UnityEngine.Rendering.AmbientMode.Flat;
-            RenderSettings.ambientLight = new Color(0.60f, 0.58f, 0.47f);
+            RenderSettings.ambientLight = new Color(0.555f, 0.535f, 0.43f);
 
             var apparitionMaterial = GetOrCreateMaterial("Apparition", new Color(0.28f, 0.01f, 0.025f), new Color(0.8f, 0f, 0.015f));
 
@@ -223,8 +223,8 @@ namespace DreadDirector.Editor
                     fillObject.transform.position = new Vector3(lx, ceilingY - 0.25f, lz);
                     var fill = fillObject.AddComponent<Light>();
                     fill.type = LightType.Point;
-                    fill.range = 19f;
-                    fill.intensity = 1.65f;
+                    fill.range = 18f;
+                    fill.intensity = 1.52f;
                     fill.color = new Color(0.98f, 0.96f, 0.82f);
                     fill.shadows = LightShadows.None;
                     fillLights.Add(fill);
@@ -309,7 +309,7 @@ namespace DreadDirector.Editor
             bloom.tint.Override(new Color(1f, 0.98f, 0.9f));
 
             var vignette = profile.Add<Vignette>(true);
-            vignette.intensity.Override(0.30f);
+            vignette.intensity.Override(0.33f);
             vignette.smoothness.Override(0.55f);
             vignette.color.Override(Color.black);
 
