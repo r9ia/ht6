@@ -10,8 +10,8 @@ from elevenlabs.play import play
 # ---------------------------------------------------------
 # API Configuration
 # ---------------------------------------------------------
-GEMINI_API_KEY = "AQ.Ab8RN6IUmBHkXwgUygD6yUQQ4XVck3Kfy1zMQ90dgFsO1X19Rg"
-ELEVENLABS_API_KEY = "sk_f70c7ae8dc6ecd2573cfd10faa19f3c2f31b7d57ae0ed269"
+GEMINI_API_KEY = "HERE"
+ELEVENLABS_API_KEY = "HERE"
 
 # Initialize Clients
 gemini_client = genai.Client(api_key=GEMINI_API_KEY)
