@@ -29,7 +29,7 @@ high-level cues (escalate, panic, recover) and connect their own reactions to
 them, such as enemy behavior, music, lighting, or pacing.
 
 Our reference build, Night Watch, is a demo where a stalking creature hunts
-harder when you stay calm and backs off when you panic, with a survival contract
+harder when you panic and backs off when your calm, with a crypto system (using unifold + solana)
 that rewards keeping your composure. It runs the full loop from camera to
 gameplay. It is only one example, though. Nothing in the framework is tied to
 that style of game, or to games at all. It is a general way for software to react
@@ -48,6 +48,23 @@ wellness and biofeedback, it can drive breathing and calming tools that respond
 to your current state. In accessibility, it can lower intensity, difficulty, or
 sensory load when someone starts to get overwhelmed. It is the same framework and
 the same privacy rules, pointed at a different experience.
+
+A few concrete examples:
+
+- Sales and client calls: on a video call, the rep gets a live read on how
+  engaged or tense the other person is, so they know when to slow down, address a
+  concern, or stop pushing. This works best as a consented, both-sides tool, and
+  being upfront about it is part of the point.
+- Presentation and interview coaching: it reads the speaker's own stress and
+  composure, then shows them afterward where they tensed up or lost the room.
+- Telehealth and therapy support: a clinician gets a quiet signal of patient
+  distress on a video session, so they can notice when someone is getting
+  overwhelmed even when they say they are fine. It stays a support signal, not a
+  diagnosis.
+- Remote learning and tutoring: the lesson notices when a student is confused or
+  checked out and slows down, re-explains, or suggests a break.
+- Driver or operator alertness: in a car or a control room, the same read flags
+  rising stress or fatigue before it becomes a safety problem.
 
 ## How we built it
 
