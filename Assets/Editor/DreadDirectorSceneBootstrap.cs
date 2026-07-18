@@ -19,7 +19,7 @@ namespace DreadDirector.Editor
         private const string ScenePath = "Assets/Scenes/DreadDirectorNightWatch.unity";
         private const string GeneratedFolder = "Assets/Generated/DreadDirector";
         private const string AutomaticBuildRevisionKey = "DreadDirector.AutomaticSceneBuildRevision";
-        private const string AutomaticBuildRevision = "backrooms-procedural-v12";
+        private const string AutomaticBuildRevision = "backrooms-procedural-v13";
 
         [InitializeOnLoadMethod]
         private static void ScheduleMissingSceneBuild()
@@ -129,10 +129,10 @@ namespace DreadDirector.Editor
         private static Pose BuildBackroomsLevel()
         {
             var wallTexture = GetOrCreateSurfaceTexture("WallAlbedo", new Color(0.62f, 0.57f, 0.33f), 0.45f, false, Color.black);
-            var floorTexture = GetOrCreateSurfaceTexture("FloorAlbedo", new Color(0.34f, 0.28f, 0.14f), 0.7f, true, new Color(0.10f, 0.08f, 0.04f));
+            var floorTexture = GetOrCreateSurfaceTexture("FloorCarpetV2", new Color(0.46f, 0.40f, 0.20f), 0.55f, false, Color.black);
             var ceilingTexture = GetOrCreateSurfaceTexture("CeilingAlbedo", new Color(0.55f, 0.53f, 0.42f), 0.3f, true, new Color(0.18f, 0.18f, 0.15f));
 
-            var floorMaterial = GetOrCreateTexturedMaterial("BackroomsFloor", new Color(0.34f, 0.28f, 0.14f), floorTexture, new Vector2(16f, 16f), 0.12f);
+            var floorMaterial = GetOrCreateTexturedMaterial("BackroomsFloor", new Color(0.46f, 0.40f, 0.20f), floorTexture, new Vector2(24f, 24f), 0.02f);
             var wallMaterial = GetOrCreateTexturedMaterial("BackroomsWall", new Color(0.64f, 0.58f, 0.34f), wallTexture, new Vector2(6f, 3f), 0.08f);
             var ceilingMaterial = GetOrCreateTexturedMaterial("BackroomsCeiling", new Color(0.55f, 0.53f, 0.42f), ceilingTexture, new Vector2(12f, 12f), 0.05f);
             var lampMaterial = GetOrCreateMaterial("FluorescentPanel", new Color(0.85f, 0.86f, 0.72f), new Color(1.15f, 1.12f, 0.85f));
