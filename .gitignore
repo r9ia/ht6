@@ -105,3 +105,18 @@ InitTestScene*.unity*
 
 # Auto-generated scenes by play mode tests
 /[Aa]ssets/[Ii]nit[Tt]est[Ss]cene*.unity*
+
+# Local secrets and service configuration
+.env
+.env.*
+!.env.example
+
+# Local TypeScript bridge dependencies and generated runtime output
+node_modules/
+narration-bridge/dist/
+narration-bridge/.runtime/
+
+
+# Accidental nested Unity project and generated solution format
+/My project/
+*.slnx

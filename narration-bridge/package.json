@@ -1,0 +1,19 @@
+{
+  "name": "dread-director-narration-bridge",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Local, allowlisted narration edge service with offline fallback for Dread Director.",
+  "type": "module",
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "start": "node dist/server.js",
+    "test": "npm run build && node --test dist/narration.test.js"
+  },
+  "engines": {
+    "node": ">=20.0.0"
+  },
+  "devDependencies": {
+    "@types/node": "24.10.1",
+    "typescript": "5.9.3"
+  }
+}
