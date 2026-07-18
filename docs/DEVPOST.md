@@ -1,121 +1,121 @@
-# mdmd — Devpost
+# mdmd Devpost
 
 ## Inspiration
 
-Every game is balanced for a player who doesn't exist — the "average" one.
-Difficulty sliders and adaptive AI have gotten good at reacting to how well you
-*play*, but nothing reacts to how you actually *feel*. It shows up in any
-experience built to move you: a moment that grips one player leaves the next
-cold, and designers just have to guess where the emotional beats should land.
+Most games are tuned for an average player who doesn't really exist. Difficulty
+settings and adaptive AI react to how well you play, but not to how you feel
+while you play. You see it in any experience meant to move you: a moment that
+grips one person does nothing for the next, and the designer is left guessing
+where the emotional beats should land.
 
-Meanwhile, the tech to read a person's emotional state quietly got real — you
-can now estimate heart rate, heart-rate variability, and breathing from an
-ordinary webcam, no wearables. But that only gets you *numbers*. There was no
-easy way for a game developer to go from "here's a heart rate" to "so make the
-game do something about it." We wanted to build the missing layer: the thing
-that turns a player's real, live emotional state into decisions a game can act
-on — and make it a drop-in framework so any developer can use it.
+At the same time, reading someone's physical state got a lot easier. You can now
+estimate heart rate, heart rate variability, and breathing from a normal webcam,
+with no wearable. The catch is that this only gives you numbers. There was no
+simple way for a developer to go from "the player's heart rate is 92" to "so
+change what the game is doing." We wanted to build that missing piece and package
+it so any developer can drop it in.
 
 ## What it does
 
-**mdmd** is a framework that lets a game sense how a player is really feeling and
-adapt in real time. A normal webcam reads the player; our system translates the
-messy biosignals into three simple, game-ready values — **arousal**, **sustained
-stress**, and **composure** — and a live "director" decides what the experience
-should do next: ramp the tension, ease off when the player is overwhelmed, or
-let them recover.
+mdmd lets a game sense how a player is feeling and respond in real time. A normal
+webcam reads the player. Our system turns the noisy raw signals into three values
+that are easy to work with: arousal, sustained stress, and composure. A live
+"director" then decides what should happen next, whether that is building
+tension, easing off when the player is overwhelmed, or giving them room to
+recover.
 
-Developers never touch raw biometrics or signal processing. They get high-level
-cues (`escalate`, `panic`, `recover`) and plug their own reactions into them —
-enemy behavior, music, lighting, pacing.
+Developers never touch raw biometrics or signal processing. They receive
+high-level cues (escalate, panic, recover) and connect their own reactions to
+them, such as enemy behavior, music, lighting, or pacing.
 
-Our reference build, **Night Watch**, is a demo where a stalking creature hunts
-harder when you're calm and backs off when you break — with a survival "contract"
-that rewards staying composed. It proves the whole loop end to end. But it's just
-one showcase: nothing about the framework is tied to that genre, or even to games
-at all — it's a general way for software to respond to how a person feels.
+Our reference build, Night Watch, is a demo where a stalking creature hunts
+harder when you stay calm and backs off when you panic, with a survival contract
+that rewards keeping your composure. It runs the full loop from camera to
+gameplay. It is only one example, though. Nothing in the framework is tied to
+that style of game, or to games at all. It is a general way for software to react
+to how a person feels.
 
 ## Beyond gaming
 
-Games are our first target, but the same three signals and the same "sense →
-decide → adapt" loop apply anywhere software would benefit from knowing how a
-person feels. In **VR and simulation training**, it can drive stress-inoculation
-— ramping pressure only while the trainee stays composed and easing off before
-they're overwhelmed. In **film, immersive theater, and theme parks**, scenes can
-pace themselves to the audience's real reactions. In **UX and product research**,
-teams can measure genuine engagement and stress without interrupting people with
-surveys. In **wellness and biofeedback**, it can power breathing and calm-coaching
-tools that respond to your actual state. And in **accessibility**, it can quietly
-dial intensity, difficulty, or sensory load down when someone is getting
-overwhelmed. Same framework, same privacy guarantees — just pointed at a
-different experience.
+Games are our first focus, but the same three signals and the same sense, decide,
+and adapt loop fit anywhere software could use a read on how someone feels. In VR
+and simulation training, it can support stress inoculation by raising the
+pressure only while the trainee stays composed and backing off before they are
+overwhelmed. In film, immersive theater, and theme parks, scenes can pace
+themselves to how the audience is actually reacting. In UX and product research,
+teams can measure real engagement and stress without stopping to run a survey. In
+wellness and biofeedback, it can drive breathing and calming tools that respond
+to your current state. In accessibility, it can lower intensity, difficulty, or
+sensory load when someone starts to get overwhelmed. It is the same framework and
+the same privacy rules, pointed at a different experience.
 
 ## How we built it
 
-- **A three-tier architecture** that keeps sensitive data isolated:
-  - **Sensor host (Linux):** webcam + camera-based vitals (pulse, HRV, breathing).
-  - **Decision core (QNX on a Raspberry Pi):** a portable, deterministic C++17
-    "Director" that fuses and confidence-gates the raw signals into normalized
-    cues and makes the pacing calls. It's dependency-free — no engine, vendor, or
-    OS headers — so it's genuinely reusable.
-  - **Game (Unity 6 / URP):** receives only high-level JSON events over local UDP
-    and turns them into gameplay.
-- **A single event contract** (`state / escalate / panic / recovery`) that
-  everything speaks.
-- **A Unity integration layer** — one bridge that unifies live signals and
-  fake/replay input, plus reactive systems (adaptive monster AI, lighting, audio
-  stings, a cinematic death sequence, and the composure-based reward contract).
-- **A fake/replay path at every layer**, so the whole thing is buildable and
-  demoable without a camera or sensor attached.
+We split the system into three tiers so the sensitive data stays isolated:
+
+- Sensor host (Linux): a webcam plus camera-based vitals (pulse, HRV, breathing).
+- Decision core (QNX on a Raspberry Pi): a portable, deterministic C++17
+  "Director" that fuses the raw signals, gates them by confidence, turns them
+  into normalized cues, and makes the pacing calls. It has no engine, vendor, or
+  OS-specific headers, so it can be reused elsewhere.
+- Game (Unity 6, URP): receives only high-level JSON events over local UDP and
+  turns them into gameplay.
+
+Everything speaks one small event contract: state, escalate, panic, recovery. The
+Unity side has a single bridge that treats live signals and fake or replayed
+input the same way, plus the reactive systems built on top of it (monster AI,
+lighting, audio stings, the death sequence, and the composure-based reward
+contract). Every layer also has a fake or replay path, so we can build and demo
+the whole thing with no camera or sensor connected.
 
 ## Challenges we ran into
 
-- **Raw biosignals are noisy and slow to trust.** HRV isn't reliable until ~60
-  seconds in, breathing needs ~30, and confidence comes as percentages, not clean
-  values. Turning that into something a developer can use without a physiology
-  degree — while being honest about "we don't know yet" — was the hard part.
-- **Keeping the decision core truly portable.** No Unity, no vendor SDKs, no
-  OS-specific headers meant designing clean contracts up front and resisting
-  shortcuts.
-- **Cross-device standardization.** Cameras, drivers, and lighting all behave
-  differently; a lot of the work was making the *output* identical regardless of
-  the setup underneath.
-- **Making it demoable without hardware in the room**, so a bad webcam or bad
-  lighting never breaks the pitch.
-- **Tuning "feel."** Balancing the monster, pacing, and even the lighting so the
-  experience is tense but readable took a lot of iteration.
+- Raw biosignals are noisy and slow to trust. HRV is not reliable for about the
+  first 60 seconds, breathing needs around 30, and confidence arrives as
+  percentages rather than clean numbers. Turning that into something a developer
+  can use without a physiology background, while staying honest about when we do
+  not know yet, took real work.
+- Keeping the decision core portable. No Unity, no vendor SDKs, and no
+  OS-specific headers meant we had to design clean contracts up front instead of
+  taking shortcuts.
+- Handling different hardware. Cameras, drivers, and lighting all behave
+  differently, so a lot of the effort went into making the output consistent no
+  matter the setup underneath.
+- Demoing without hardware in the room, so a bad webcam or bad lighting never
+  breaks the pitch.
+- Tuning the feel. Balancing the monster, the pacing, and even the lighting so
+  the experience stays tense but readable took a lot of iteration.
 
 ## Accomplishments that we're proud of
 
-- We built the *decision layer*, not just another measurement wrapper — the part
-  that actually turns vitals into behavior.
-- A clean privacy story that's baked into the architecture: raw video and
-  biometrics **physically never leave the sensor device**; the game only ever
-  sees high-level cues.
-- A fully playable end-to-end reference game that visibly reacts to emotional
-  state.
-- A framework that's genuinely reusable beyond our demo — same three signals, any
-  medium.
-- It all degrades gracefully: no hardware, no internet, still works.
+- We built the decision layer, not just a wrapper around the measurements. This
+  is the part that turns vitals into behavior.
+- The privacy model is built into the architecture. Raw video and biometrics stay
+  on the sensor device, and the game only ever sees high-level cues.
+- We have a playable reference game, running from camera to gameplay, that
+  visibly responds to the player's state.
+- The framework works well past our own demo. Same three signals, any medium.
+- It degrades gracefully. No hardware, no internet, and it still runs.
 
 ## What we learned
 
-- The value isn't in measuring emotion — that's becoming a commodity — it's in
-  **deciding what to do with it**. That reframing shaped the whole project.
-- Good abstractions are a feature: collapsing pulse/HRV/breathing into three
-  stable numbers is what makes this usable.
-- Privacy and portability are easier when they're design constraints from day
-  one, not afterthoughts.
-- Honesty about uncertainty (confidence windows, warm-up time) makes the system
-  more trustworthy, not less.
+- The hard part is not measuring emotion, which is becoming common, but deciding
+  what to do with it. That shaped how we scoped the project.
+- Simple, stable outputs matter. Collapsing pulse, HRV, and breathing into three
+  numbers is what makes the thing usable.
+- Privacy and portability are much easier when you treat them as constraints from
+  the start.
+- Being upfront about uncertainty, like confidence windows and warm-up time,
+  makes the system easier to trust, not harder.
 
 ## What's next for mdmd
 
-- **A designer-friendly toolkit:** tunable pacing profiles, a ready-made reactor
-  library, and analytics that show designers a per-session "fear timeline."
-- **More signals and smarter decisions** as the models mature.
-- **Pilots outside gaming:** partnering with teams in training, interactive
-  media, and research to validate the framework in the wild (see *Beyond gaming*).
-- **A standardized sensor appliance** so studios integrate once and get
-  identical, reproducible signals everywhere.
-- **Engine support beyond Unity** (Unreal, Godot) on the same event contract.
+- A toolkit for designers: tunable pacing profiles, a set of ready-made
+  reactions, and a per-session view of where players tensed up.
+- More signals and better decisions as the models improve.
+- Pilots outside gaming, working with teams in training, interactive media, and
+  research to test the framework in real use (see Beyond gaming).
+- A standardized sensor device so studios integrate once and get the same signals
+  everywhere.
+- Support for more engines beyond Unity, such as Unreal and Godot, on the same
+  event contract.
