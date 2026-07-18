@@ -4,9 +4,9 @@
 
 Every game is balanced for a player who doesn't exist — the "average" one.
 Difficulty sliders and adaptive AI have gotten good at reacting to how well you
-*play*, but nothing reacts to how you actually *feel*. That's most obvious in
-horror: a jump scare that makes one person leap out of their chair is a shrug to
-the next, and designers just have to guess where the tension should sit.
+*play*, but nothing reacts to how you actually *feel*. It shows up in any
+experience built to move you: a moment that grips one player leaves the next
+cold, and designers just have to guess where the emotional beats should land.
 
 Meanwhile, the tech to read a person's emotional state quietly got real — you
 can now estimate heart rate, heart-rate variability, and breathing from an
@@ -29,11 +29,26 @@ Developers never touch raw biometrics or signal processing. They get high-level
 cues (`escalate`, `panic`, `recover`) and plug their own reactions into them —
 enemy behavior, music, lighting, pacing.
 
-Our reference build, **Night Watch**, is a backrooms horror demo where the
-monster hunts harder when you're calm and backs off when you break — with a
-survival "contract" that rewards staying composed. It proves the whole loop end
-to end. But the framework isn't horror-specific: the same signals drive VR
-training, interactive media, UX research, wellness, and accessibility.
+Our reference build, **Night Watch**, is a demo where a stalking creature hunts
+harder when you're calm and backs off when you break — with a survival "contract"
+that rewards staying composed. It proves the whole loop end to end. But it's just
+one showcase: nothing about the framework is tied to that genre, or even to games
+at all — it's a general way for software to respond to how a person feels.
+
+## Beyond gaming
+
+Games are our first target, but the same three signals and the same "sense →
+decide → adapt" loop apply anywhere software would benefit from knowing how a
+person feels. In **VR and simulation training**, it can drive stress-inoculation
+— ramping pressure only while the trainee stays composed and easing off before
+they're overwhelmed. In **film, immersive theater, and theme parks**, scenes can
+pace themselves to the audience's real reactions. In **UX and product research**,
+teams can measure genuine engagement and stress without interrupting people with
+surveys. In **wellness and biofeedback**, it can power breathing and calm-coaching
+tools that respond to your actual state. And in **accessibility**, it can quietly
+dial intensity, difficulty, or sensory load down when someone is getting
+overwhelmed. Same framework, same privacy guarantees — just pointed at a
+different experience.
 
 ## How we built it
 
@@ -99,9 +114,8 @@ training, interactive media, UX research, wellness, and accessibility.
 - **A designer-friendly toolkit:** tunable pacing profiles, a ready-made reactor
   library, and analytics that show designers a per-session "fear timeline."
 - **More signals and smarter decisions** as the models mature.
-- **Beyond games:** VR stress-inoculation training, interactive film and theme
-  parks, playtest/UX research, and accessibility (auto-dialing intensity down
-  when someone's overwhelmed).
+- **Pilots outside gaming:** partnering with teams in training, interactive
+  media, and research to validate the framework in the wild (see *Beyond gaming*).
 - **A standardized sensor appliance** so studios integrate once and get
   identical, reproducible signals everywhere.
 - **Engine support beyond Unity** (Unreal, Godot) on the same event contract.
