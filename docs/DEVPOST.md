@@ -51,20 +51,13 @@ the same privacy rules, pointed at a different experience.
 
 A few concrete examples:
 
-- Sales and client calls: on a video call, the rep gets a live read on how
-  engaged or tense the other person is, so they know when to slow down, address a
-  concern, or stop pushing. This works best as a consented, both-sides tool, and
-  being upfront about it is part of the point.
-- Presentation and interview coaching: it reads the speaker's own stress and
-  composure, then shows them afterward where they tensed up or lost the room.
-- Telehealth and therapy support: a clinician gets a quiet signal of patient
-  distress on a video session, so they can notice when someone is getting
-  overwhelmed even when they say they are fine. It stays a support signal, not a
-  diagnosis.
-- Remote learning and tutoring: the lesson notices when a student is confused or
-  checked out and slows down, re-explains, or suggests a break.
-- Driver or operator alertness: in a car or a control room, the same read flags
-  rising stress or fatigue before it becomes a safety problem.
+- Sales and client calls: a live read on how engaged or tense the other person
+  is, so the rep knows when to ease off or dig in. Best as a consented,
+  both-sides tool.
+- Coaching and telehealth: it flags when a speaker, or a patient on a video
+  visit, is getting overwhelmed, even when they say they are fine.
+- Learning and tutoring: the lesson slows down or re-explains when a student is
+  clearly confused or checked out.
 
 ## How we built it
 
