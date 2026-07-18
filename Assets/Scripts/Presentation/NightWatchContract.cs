@@ -21,7 +21,7 @@ namespace DreadDirector.Presentation
     {
         [Header("Scene references (auto-found if empty)")]
         public DirectorGameBridge Director;
-        public FirstPersonController Player;
+        public DreadDirector.Player.FirstPersonController Player;
         public ApparitionController Apparition;
         public PlayerDeathController Death;
 
@@ -66,7 +66,7 @@ namespace DreadDirector.Presentation
             if (Director == null) Director = FindAnyObjectByType<DirectorGameBridge>();
             if (Apparition == null) Apparition = FindAnyObjectByType<ApparitionController>();
             if (Death == null) Death = FindAnyObjectByType<PlayerDeathController>();
-            if (Player == null) Player = FindAnyObjectByType<FirstPersonController>();
+            if (Player == null) Player = FindAnyObjectByType<DreadDirector.Player.FirstPersonController>();
             timeRemaining = RunDuration;
         }
 
