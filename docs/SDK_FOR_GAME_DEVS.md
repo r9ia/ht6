@@ -1,10 +1,12 @@
-# Dread Director SDK — What It Gives Game Developers
+# Dread Director SDK — What It Gives Developers
 
-> **The one-line pitch:** Dread Director lets a horror game read how scared the
-> player *actually* is — from an ordinary webcam — and adapt the experience in
-> real time, so every player gets a night tuned to their own nerve. Developers
-> get all of this as a drop-in toolkit; they never touch biometrics, hardware,
-> or the real-time brain that makes the calls.
+> **The one-line pitch:** Dread Director reads how a person is *actually*
+> feeling — arousal, stress, composure — from an ordinary camera, and hands your
+> app three dead-simple numbers plus a few cues so it can adapt in real time. A
+> horror game is our flagship demo, but any experience that should respond to a
+> person's state can use it. Developers get all of this as a drop-in toolkit;
+> they never touch biometrics, hardware, or the real-time brain that makes the
+> calls.
 
 This document is the high-level tour of what the SDK offers. It is deliberately
 broad — the detailed contracts live in [`ARCHITECTURE.md`](ARCHITECTURE.md).
@@ -23,6 +25,76 @@ house actor reads a group and adjusts.
 
 The reusable **SDK is the product.** The *Night Watch* demo in this repo is just
 one game built on top of it to prove it works.
+
+---
+
+## What we measure — and how we make it simple
+
+**The raw layer (measured on the device, never handed to you).**
+Using remote photoplethysmography (rPPG) — reading tiny color changes in the
+face from a normal camera, no wearables — we derive:
+- Pulse rate (BPM) and its trend
+- Heart-rate variability (HRV) — a calm-vs-stressed indicator
+- Breathing rate and regularity
+- Facial motion / expression cues
+
+These raw vitals are noisy, arrive as confidence-weighted percentages, and need
+warm-up time (HRV isn't trustworthy for ~60s, breathing ~30s). Physiology is
+hard and easy to misuse — so **we deliberately never hand developers raw
+vitals.**
+
+**The translation (our algorithm's job).**
+We fuse, smooth, and *confidence-gate* those raw signals into three normalized
+numbers any developer can use with zero physiology knowledge:
+
+| Metric | Range | Plain meaning |
+| --- | --- | --- |
+| **Arousal** | 0 – 1 | Short-term activation — "something just spiked them." |
+| **Sustained stress** | 0 – 1 | Slow-burn tension building over time. |
+| **Composure** | −1 – 1 | How settled vs. rattled they are right now. |
+
+…plus discrete **cues** when a moment matters: *escalate*, *ease-off (panic)*,
+*recovered*.
+
+**Honesty is built in.** While a signal is still warming up or low-confidence,
+the SDK says so, so you never react to noise. And these are *experience* signals
+— we make **no** health, diagnosis, or medical claims.
+
+The whole point: we absorb the messy biosignal science and expose a handful of
+stable, human-readable values. You write `if (arousal > 0.7) …`, not a DSP
+pipeline.
+
+---
+
+## Who this is for (beyond games)
+
+Any experience that could adapt to how a person is feeling:
+- **Games** (our flagship) — horror pacing, adaptive difficulty, tension.
+- **VR/AR training & simulation** — stress-inoculation, stay-calm-under-pressure drills.
+- **Interactive film, immersive theater, theme parks** — scenes that read the room.
+- **UX & playtest research** — measure engagement and stress without surveys.
+- **Wellness & biofeedback** — breathing/calm coaching (non-clinical).
+- **Accessibility** — automatically dial intensity down when someone is overwhelmed.
+
+Same three metrics, same cues, any medium.
+
+---
+
+## One standardized device — less debugging, less room for error
+
+Biometric capture is normally a per-setup mess: every camera, driver, OS, and
+lighting condition behaves differently, and developers burn days chasing
+variance that has nothing to do with their app.
+
+Dread Director ships as **one centralized, calibrated device** that does the
+capture *and* the analysis and emits the *same* clean signal everywhere.
+Developers integrate once, against a single stable contract:
+- No per-camera / per-OS calibration or driver debugging.
+- Reproducible behavior across machines, demos, and studios.
+- One standardized output = far less room for error and much faster integration.
+
+Think of it as the difference between supporting a hundred random webcams
+yourself versus plugging into one appliance that always speaks the same language.
 
 ---
 
@@ -114,10 +186,12 @@ what your game does about it.**
 ## Why this matters for judges
 
 - **Reusable platform, not a one-off game.** The demo is proof; the SDK is the
-  deliverable.
+  deliverable — and it applies well beyond games.
 - **Real, hard tech made simple.** Webcam biometrics + a portable real-time
-  decision core, exposed as four friendly cues.
+  decision core, distilled into three numbers and a few cues.
+- **One standardized device.** Developers integrate once and get identical,
+  reproducible signals everywhere — no per-device debugging.
 - **Privacy-first by design.** The sensitive data physically cannot reach the
-  game or the cloud.
-- **Adoptable.** Fake-input and designer profiles mean a studio can try it in an
+  app or the cloud.
+- **Adoptable.** Fake-input and designer profiles mean a team can try it in an
   afternoon.
