@@ -1,0 +1,19 @@
+{
+  "name": "dread-director-unifold-bridge",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Local, loopback-only Unifold reward bridge for Dread Director. Rewards survival and composure with sandbox stablecoin; the only module that touches Unifold.",
+  "type": "module",
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "start": "node dist/server.js",
+    "test": "npm run build && node --test dist/rewards.test.js"
+  },
+  "engines": {
+    "node": ">=20.0.0"
+  },
+  "devDependencies": {
+    "@types/node": "24.10.1",
+    "typescript": "5.9.3"
+  }
+}

@@ -54,6 +54,20 @@ npm --prefix narration-bridge start
 
 Cloud narration is disabled unless `ENABLE_CLOUD_NARRATION=true`. The game works when the bridge or Internet is unavailable.
 
+## Optional reward bridge
+
+`unifold-bridge/` is a local, loopback-only TypeScript service that powers the **Night Watch Contract**: surviving longer and staying calmer (less scared) earns a sandbox stablecoin (USDC) bounty via the [Unifold](https://unifold.io) SDK. It is the only module that touches Unifold. Unity measures survival and composure locally and sends only an opaque `{version, claimId, tier}` claim — never biometrics, Director scores, identity, or a wallet. QNX is not involved.
+
+```powershell
+Copy-Item .env.example .env
+# Leave the Unifold values blank to run in mock mode (no keys, funds, or network).
+npm --prefix unifold-bridge install
+npm --prefix unifold-bridge run build
+npm --prefix unifold-bridge start
+```
+
+Rewards are mock/simulated unless `ENABLE_UNIFOLD_REWARDS=true` and a secret key, treasury account, and recipient address are configured. Live payouts use Unifold treasury outbound transfers (default Base USDC). The game works when the bridge or Internet is unavailable. See [`unifold-bridge/README.md`](unifold-bridge/README.md).
+
 ## Documentation
 
 - [`AGENTS.md`](AGENTS.md) — implementation boundaries and contributor rules

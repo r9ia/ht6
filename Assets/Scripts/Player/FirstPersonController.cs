@@ -15,6 +15,7 @@ namespace DreadDirector.Player
         private CharacterController characterController;
         private float pitchDegrees;
         private float verticalVelocity;
+        private bool warnedNoKeyboard;
 
         private void Awake()
         {
@@ -33,10 +34,21 @@ namespace DreadDirector.Player
 
         private void Update()
         {
+            // Movement and look are handled independently: a missing mouse or camera
+            // reference must never stop keyboard movement from working.
             var keyboard = Keyboard.current;
             var mouse = Mouse.current;
-            if (keyboard == null || mouse == null || CameraTransform == null)
+
+            if (keyboard == null)
             {
+                if (!warnedNoKeyboard)
+                {
+                    Debug.LogWarning("[Dread Director] No keyboard device detected by the Input System. " +
+                        "Confirm Project Settings > Player > Active Input Handling includes the new Input System, " +
+                        "and click the Game view so it has focus.", this);
+                    warnedNoKeyboard = true;
+                }
+
                 return;
             }
 
@@ -45,7 +57,11 @@ namespace DreadDirector.Player
                 SetCursorLocked(Cursor.lockState != CursorLockMode.Locked);
             }
 
-            HandleLook(mouse);
+            if (mouse != null && CameraTransform != null)
+            {
+                HandleLook(mouse);
+            }
+
             HandleMovement(keyboard);
         }
 
@@ -65,10 +81,10 @@ namespace DreadDirector.Player
         private void HandleMovement(Keyboard keyboard)
         {
             var input = Vector2.zero;
-            if (keyboard.wKey.isPressed) input.y += 1f;
-            if (keyboard.sKey.isPressed) input.y -= 1f;
-            if (keyboard.aKey.isPressed) input.x -= 1f;
-            if (keyboard.dKey.isPressed) input.x += 1f;
+            if (keyboard.wKey.isPressed || keyboard.upArrowKey.isPressed) input.y += 1f;
+            if (keyboard.sKey.isPressed || keyboard.downArrowKey.isPressed) input.y -= 1f;
+            if (keyboard.aKey.isPressed || keyboard.leftArrowKey.isPressed) input.x -= 1f;
+            if (keyboard.dKey.isPressed || keyboard.rightArrowKey.isPressed) input.x += 1f;
             input = Vector2.ClampMagnitude(input, 1f);
 
             var movement = (transform.right * input.x + transform.forward * input.y) * MoveSpeed;

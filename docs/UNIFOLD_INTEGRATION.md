@@ -75,3 +75,30 @@ The Unifold feature is demo-ready only when all are true:
 2. Confirm the TypeScript package name, installation version, required environment variables, callback/webhook model, and sandbox network.
 3. Ask the Unifold Discord contact which game-payment/reward pattern best demonstrates deposits/payments without custom settlement logic.
 4. Replace this design contract’s placeholders with verified API details before implementation.
+
+## Verified implementation (`unifold-bridge/`)
+
+The placeholders above are now resolved. Verified from Unifold's project-scoped docs (`llms-full.txt`, `skill.md`) and implemented in `unifold-bridge/`.
+
+### Selected product surface
+
+**Night Watch Contract — survival + composure bounty.** Surviving longer and staying calmer (being less scared) earns a sandbox stablecoin (USDC) reward. Reward direction is a **payout** (an accepted "game with on-chain rewards" pattern): the bridge issues a Unifold **treasury outbound transfer** to a demo recipient, scaled by an opaque achievement tier. Unity folds local survival time and composure into one tier and sends only `{ version, claimId, tier }`.
+
+### Verified API details
+
+- **SDK / transport:** TypeScript `@unifold/node` (secret-key, server-side), used SDK-first via a runtime-assembled dynamic import; falls back to the documented REST endpoint `POST /v1/treasury/outbound_transfers`. Both use the `claimId` as the idempotency key (required by Unifold).
+- **Auth:** secret key `sk_...` in the ignored root `.env`; never client-side, never committed.
+- **Environment variables:** see `.env.example` (`ENABLE_UNIFOLD_REWARDS`, `UNIFOLD_SECRET_KEY`, `UNIFOLD_TREASURY_ACCOUNT_ID`, `UNIFOLD_DEMO_RECIPIENT_ADDRESS`, chain/token settings).
+- **Chain/token:** default **Base (`8453`) USDC** (`0x833589fcd6edb6e08f4c7c32d4f71b54bda02913`, 6 decimals). Treasury outbound transfers support Polygon `137`, Base `8453`, and Solana `mainnet`.
+- **Solana note:** Solana treasury sources require `source.chain_id: "mainnet"` explicitly. Default demo uses Base, so no Solana support is claimed unless that treasury/chain is configured.
+- **Sandbox/mock:** the bridge defaults to a network-free mock payout, preserving the replay/fake path. Live payouts require the opt-in flag plus a secret key, treasury id, and recipient.
+- **Status model:** provider statuses are normalized to `completed | pending | cancelled | failed` for Unity.
+
+### Definition of done — status
+
+- [x] The bridge is the only module that touches Unifold; it imports the real `@unifold/node` SDK (SDK-first) with a REST fallback.
+- [x] Unity receives and displays normalized status (`UnifoldRewardBridgeClient`).
+- [x] Errors and unavailability show understandable UI and never break gameplay (offline/mock fallback, loopback guard).
+- [x] No secrets, wallet exports, signed transactions, participant identifiers, or biometric data are committed or transmitted to Unifold (only an opaque `claimId` + tier cross; `claimId` is reused as `external_user_id`).
+- [ ] A sandbox stablecoin payout completes end to end against live Unifold sandbox — pending real sandbox keys, a funded test treasury, and a recipient in `.env` (mock path verified offline; live path implemented but not yet exercised against the sandbox).
+- [ ] Any Solana support claim verified in the sandbox — not claimed by default (Base USDC).

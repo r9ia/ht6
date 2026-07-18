@@ -81,10 +81,14 @@ namespace DreadDirector.Editor
             ValidateGeneratedScene(systems, roomLight, apparitionVisual, usingGeorgiaLevel);
 
             EditorSceneManager.SaveScene(scene, ScenePath);
+            EditorBuildSettings.scenes = new[]
+            {
+                new EditorBuildSettingsScene(ScenePath, true)
+            };
             AssetDatabase.SaveAssets();
             AssetDatabase.Refresh();
             Selection.activeGameObject = systems;
-            Debug.Log($"[Dread Director] Built and saved {ScenePath}. Press Play, then use 1-4 to drive the demo.");
+            Debug.Log($"[Dread Director] Built and saved {ScenePath}, and set it as the player build scene. Press Play, then use 1-4 to drive the demo.");
         }
 
         /// <summary>Batch-mode entry point used by CI or local validation.</summary>
