@@ -17,12 +17,12 @@ it so any developer can drop it in.
 
 ## What it does
 
-mdmd lets a game sense how a player is feeling and respond in real time. A normal
-webcam reads the player. Our system turns the noisy raw signals into three values
-that are easy to work with: arousal, sustained stress, and composure. A live
-"director" then decides what should happen next, whether that is building
-tension, easing off when the player is overwhelmed, or giving them room to
-recover.
+mdmd lets a game sense how a player is feeling and respond in real time. A small
+sensor unit, a Raspberry Pi with a camera and a contact pulse sensor, reads the
+player. Our system turns the noisy raw signals into three values that are easy to
+work with: arousal, sustained stress, and composure. A live "director" then
+decides what should happen next, whether that is building tension, easing off
+when the player is overwhelmed, or giving them room to recover.
 
 Developers never touch raw biometrics or signal processing. They receive
 high-level cues (escalate, panic, recover) and connect their own reactions to
@@ -51,13 +51,16 @@ the same privacy rules, pointed at a different experience.
 
 ## How we built it
 
-We split the system into three tiers so the sensitive data stays isolated:
+We split the system into tiers so the sensitive data stays isolated:
 
-- Sensor host (Linux): a webcam plus camera-based vitals (pulse, HRV, breathing).
-- Decision core (QNX on a Raspberry Pi): a portable, deterministic C++17
-  "Director" that fuses the raw signals, gates them by confidence, turns them
-  into normalized cues, and makes the pacing calls. It has no engine, vendor, or
-  OS-specific headers, so it can be reused elsewhere.
+- Sensor unit (Raspberry Pi with a camera and a contact pulse sensor): the camera
+  estimates breathing and heart rate from the face, and the pulse sensor reads the
+  heartbeat directly. Reading both on one small board keeps all the raw data local
+  and gives us a clean reference to check the camera against.
+- Decision core (portable, deterministic C++17 "Director"): fuses the camera and
+  pulse data, gates it by confidence, turns it into normalized cues, and makes the
+  pacing calls. It has no engine, vendor, or OS-specific headers, so it can be
+  reused elsewhere.
 - Game (Unity 6, URP): receives only high-level JSON events over local UDP and
   turns them into gameplay.
 
@@ -67,6 +70,20 @@ input the same way, plus the reactive systems built on top of it (monster AI,
 lighting, audio stings, the death sequence, and the composure-based reward
 contract). Every layer also has a fake or replay path, so we can build and demo
 the whole thing with no camera or sensor connected.
+
+## Why our own hardware
+
+A webcam on its own can estimate heart rate, but it is easy to throw off.
+Lighting, movement, and skin tone all affect it, and its slower signals like HRV
+need a warm-up period before they can be trusted. A contact pulse sensor does not
+have those problems. It gives a clean heartbeat from the first second, so we use
+it as a reference to anchor and sanity-check the camera estimate, cover the
+cold-start gap while the camera settles, and catch the moments when the camera
+drifts. Fusing the two is more reliable than either one alone. Running it all on
+a dedicated Raspberry Pi keeps every raw sample on one local device, frees the
+game machine from doing any sensing, and produces the same calibrated signal on
+every setup. A studio does not have to babysit camera drivers and lighting. They
+plug in one small box that always behaves the same way.
 
 ## Challenges we ran into
 
