@@ -4,7 +4,7 @@ free to use these game assets in any project, personal or commercial. There's no
 
 Thanks for Downloading!!!
 
- 
+
 check for updates here https://twitter.com/TheLoafbrr ; https://mastodon.gamedev.place/@loafbrr  and https://loafbrr.itch.io/
 
 or support by giving a tip on itch.io or these two

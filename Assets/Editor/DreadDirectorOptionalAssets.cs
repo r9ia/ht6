@@ -1,7 +1,9 @@
 using System;
 using UnityEditor;
 using UnityEditor.Animations;
+using UnityEditor.SceneManagement;
 using UnityEngine;
+using UnityEngine.SceneManagement;
 using Object = UnityEngine.Object;
 
 namespace DreadDirector.Editor
@@ -11,6 +13,8 @@ namespace DreadDirector.Editor
     {
         private static readonly string[] EnvironmentKeywords = { "backroom", "room", "corridor", "hall", "modular" };
         private static readonly string[] CreatureKeywords = { "creep", "horror", "creature", "monster", "character" };
+        private static readonly string[] GeorgiaWorldRootNames = { "RoomTiles", "Props", "Directional Light", "Global Volume" };
+        private const string GeorgiaLevelScene = "Assets/Asset/BackroomsLikeAsset/Rooms.unity";
         private const string PreferredEnvironmentPrefab = "Assets/LoafbrrAssets/BackroomsLikeAssetRe/prefab/Level/TstLevel.prefab";
         private const string PreferredCreatureAsset = "Assets/ThirdParty/Quaternius/UltimateMonsters/Demon/Demon.fbx";
 
@@ -21,6 +25,68 @@ namespace DreadDirector.Editor
             var creaturePath = FindCreatureAssetPath();
             Debug.Log($"[Dread Director] Optional environment: {environmentPath ?? "not found (procedural fallback will be used)"}.");
             Debug.Log($"[Dread Director] Optional creature: {creaturePath ?? "not found (primitive apparition will be used)"}.");
+        }
+
+        public static bool TryInstantiateGeorgiaLevel(Scene destinationScene, out Pose playerSpawn)
+        {
+            playerSpawn = new Pose(new Vector3(0f, 0f, -5.2f), Quaternion.identity);
+            if (AssetDatabase.LoadAssetAtPath<SceneAsset>(GeorgiaLevelScene) == null)
+            {
+                return false;
+            }
+
+            var templateScene = EditorSceneManager.OpenScene(GeorgiaLevelScene, OpenSceneMode.Additive);
+            try
+            {
+                var templateRoots = templateScene.GetRootGameObjects();
+                foreach (var root in templateRoots)
+                {
+                    if (!string.Equals(root.name, "Player", StringComparison.Ordinal))
+                    {
+                        continue;
+                    }
+
+                    var position = root.transform.position;
+                    var controller = root.GetComponent<CharacterController>();
+                    if (controller != null)
+                    {
+                        position.y += controller.center.y - (controller.height * 0.5f);
+                    }
+
+                    playerSpawn = new Pose(position, root.transform.rotation);
+                    break;
+                }
+
+                var levelRoot = new GameObject("Georgia Backrooms Level");
+                SceneManager.MoveGameObjectToScene(levelRoot, destinationScene);
+                foreach (var root in templateRoots)
+                {
+                    if (Array.IndexOf(GeorgiaWorldRootNames, root.name) < 0)
+                    {
+                        continue;
+                    }
+
+                    SceneManager.MoveGameObjectToScene(root, destinationScene);
+                    root.transform.SetParent(levelRoot.transform, true);
+                }
+
+                var rendererCount = levelRoot.GetComponentsInChildren<Renderer>(true).Length;
+                var colliderCount = levelRoot.GetComponentsInChildren<Collider>(true).Length;
+                if (levelRoot.transform.Find("RoomTiles") == null || rendererCount == 0 || colliderCount == 0)
+                {
+                    Object.DestroyImmediate(levelRoot);
+                    Debug.LogWarning($"[Dread Director] Georgia level at {GeorgiaLevelScene} did not contain its expected world roots; using the fallback room.");
+                    return false;
+                }
+
+                Debug.Log($"[Dread Director] Imported Georgia level from {GeorgiaLevelScene} ({rendererCount} renderers, {colliderCount} colliders).");
+                return true;
+            }
+            finally
+            {
+                EditorSceneManager.CloseScene(templateScene, true);
+                SceneManager.SetActiveScene(destinationScene);
+            }
         }
 
         public static bool TryInstantiateEnvironment()

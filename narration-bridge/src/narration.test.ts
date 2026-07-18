@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 import type { BridgeConfig } from "./config.js";
-import { createNarration, isAllowedEvent, offlineLine } from "./narration.js";
+import { createNarration, isAllowedEvent, offlineLine, type NarrationEvent } from "./narration.js";
 
 const offlineConfig: BridgeConfig = {
   host: "127.0.0.1",
@@ -14,21 +14,41 @@ const offlineConfig: BridgeConfig = {
   providerTimeoutMs: 100,
 };
 
-test("only documented event labels are accepted", () => {
-  assert.equal(isAllowedEvent("escalation_low"), true);
+const allowedEvents: NarrationEvent[] = [
+  "calibration_complete",
+  "escalation_low",
+  "escalation_high",
+  "panic_backoff",
+  "recovery",
+];
+
+test("only documented generic gameplay event labels are accepted", () => {
+  for (const event of allowedEvents) assert.equal(isAllowedEvent(event), true);
+  assert.equal(isAllowedEvent("heart_rate"), false);
   assert.equal(isAllowedEvent("arousal_0.99"), false);
   assert.equal(isAllowedEvent({ event: "recovery" }), false);
 });
 
-test("offline lines are non-empty and contain no health claim", () => {
-  const line = offlineLine("recovery");
-  assert.ok(line.length > 10);
-  assert.doesNotMatch(line, /diagnos|treat|blood pressure/iu);
+test("every offline event has multiple non-repeating responses", () => {
+  for (const event of allowedEvents) {
+    const first = offlineLine(event, () => 0);
+    const second = offlineLine(event, () => 0);
+    assert.ok(first.length > 10);
+    assert.ok(second.length > 10);
+    assert.notEqual(first, second);
+  }
 });
 
-test("offline mode never requires provider credentials", async () => {
+test("offline lines contain no medical claims", () => {
+  for (const event of allowedEvents) {
+    const line = offlineLine(event, () => 0.75);
+    assert.doesNotMatch(line, /diagnos|treat|blood pressure|medical/iu);
+  }
+});
+
+test("offline mode never requires provider credentials or audio", async () => {
   const result = await createNarration("panic_backoff", offlineConfig);
   assert.equal(result.source, "offline");
   assert.equal(result.audioFileName, undefined);
-  assert.equal(result.text, offlineLine("panic_backoff"));
+  assert.ok(result.text.length > 10);
 });

@@ -4,16 +4,45 @@ import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import type { BridgeConfig } from "./config.js";
 
-const LINES = {
-  calibration_complete: "Calibration complete. Try not to let the room learn you too quickly.",
-  escalation_low: "Something in the room has shifted. Keep watching the corners.",
-  escalation_high: "It knows where you are. Do not look away.",
-  panic_backoff: "Easy now. The room is giving you one breath.",
-  recovery: "Your pulse settles. Somewhere in the dark, it starts waiting again.",
+// Adapted from origin/smartspectra's dialogue pools. The bridge accepts only
+// generic gameplay events, so biometric measurements never cross this boundary.
+const LINE_POOLS = {
+  calibration_complete: [
+    "Calibration complete. Try not to let the room learn you too quickly.",
+    "This part is quiet. Enjoy it.",
+    "The room knows your ordinary now. It will not stay ordinary for long.",
+  ],
+  escalation_low: [
+    "Something in the room has shifted. Keep watching the corners.",
+    "Careful. Something changes every time you blink.",
+    "There—did you see it too, or just feel it?",
+    "Every blink is half a second it gets closer.",
+    "Surprise is just fear that has not decided what to do yet.",
+  ],
+  escalation_high: [
+    "It knows where you are. Do not look away.",
+    "Your heart is giving you away.",
+    "Something in here can hear that pulse.",
+    "Every heartbeat is a light in the dark. Yours is very bright right now.",
+    "There it is. That is the fear it was waiting for.",
+    "Something about you just changed the room.",
+  ],
+  panic_backoff: [
+    "Easy now. The room is giving you one breath.",
+    "It heard you. Now it is waiting.",
+    "The footsteps stopped. That does not mean it left.",
+    "For one moment, the dark has decided to keep its distance.",
+  ],
+  recovery: [
+    "You settle. Somewhere in the dark, it starts waiting again.",
+    "This part is quiet. Enjoy it while it lasts.",
+    "It has gone still, but it has not gone away.",
+    "The room is patient. It can wait longer than you can.",
+  ],
 } as const;
 
-export type NarrationEvent = keyof typeof LINES;
-export type NarrationSource = "offline" | "gemini" | "gemini-elevenlabs";
+export type NarrationEvent = keyof typeof LINE_POOLS;
+export type NarrationSource = "offline" | "gemini" | "elevenlabs" | "gemini-elevenlabs";
 
 export interface NarrationResult {
   readonly event: NarrationEvent;
@@ -22,12 +51,23 @@ export interface NarrationResult {
   readonly audioFileName?: string;
 }
 
+const lastLineIndices = new Map<NarrationEvent, number>();
+
 export function isAllowedEvent(value: unknown): value is NarrationEvent {
-  return typeof value === "string" && Object.prototype.hasOwnProperty.call(LINES, value);
+  return typeof value === "string" && Object.prototype.hasOwnProperty.call(LINE_POOLS, value);
 }
 
-export function offlineLine(event: NarrationEvent): string {
-  return LINES[event];
+/** Selects randomly while avoiding the immediately previous line for each event. */
+export function offlineLine(event: NarrationEvent, random: () => number = Math.random): string {
+  const pool = LINE_POOLS[event];
+  const sample = Math.max(0, Math.min(0.999999999, random()));
+  let index = Math.floor(sample * pool.length);
+  if (pool.length > 1 && index === lastLineIndices.get(event)) {
+    index = (index + 1) % pool.length;
+  }
+
+  lastLineIndices.set(event, index);
+  return pool[index]!;
 }
 
 function cleanGeneratedText(value: string): string {
@@ -49,7 +89,7 @@ async function generateGeminiLine(event: NarrationEvent, fallback: string, confi
     body: JSON.stringify({
       contents: [{
         role: "user",
-        parts: [{ text: `Write one short PG-13 horror narrator line, maximum 22 words, for the fixed game event '${event}'. No names, biometrics, health claims, instructions, or markdown. Tone reference: ${fallback}` }],
+        parts: [{ text: `Write one short PG-13 monster line, maximum 22 words, for the fixed game event '${event}'. No names, biometrics, health claims, instructions, or markdown. Tone reference: ${fallback}` }],
       }],
       generationConfig: { temperature: 0.7, maxOutputTokens: 48 },
     }),
@@ -99,24 +139,31 @@ async function synthesizeElevenLabs(text: string, config: BridgeConfig): Promise
 export async function createNarration(event: NarrationEvent, config: BridgeConfig): Promise<NarrationResult> {
   const fallback = offlineLine(event);
   let text = fallback;
-  let source: NarrationSource = "offline";
+  let generatedByGemini = false;
 
   try {
     const generated = await generateGeminiLine(event, fallback, config);
     if (generated !== null) {
       text = generated;
-      source = "gemini";
+      generatedByGemini = true;
     }
   } catch {
-    return { event, text: fallback, source: "offline" };
+    // Keep the curated line and still allow ElevenLabs to voice it.
   }
 
   try {
     const audioFileName = await synthesizeElevenLabs(text, config);
-    if (audioFileName !== null) return { event, text, source: "gemini-elevenlabs", audioFileName };
+    if (audioFileName !== null) {
+      return {
+        event,
+        text,
+        source: generatedByGemini ? "gemini-elevenlabs" : "elevenlabs",
+        audioFileName,
+      };
+    }
   } catch {
-    // Text remains usable; voice is optional.
+    // Text remains usable; voice is optional and must never block gameplay.
   }
 
-  return { event, text, source };
+  return { event, text, source: generatedByGemini ? "gemini" : "offline" };
 }

@@ -11,13 +11,13 @@ using UnityEngine.SceneManagement;
 
 namespace DreadDirector.Editor
 {
-    /// <summary>Creates the complete primitive-based Night Watch vertical slice without Inspector wiring.</summary>
+    /// <summary>Creates the complete Night Watch vertical slice and imports Georgia's authored level without Inspector wiring.</summary>
     public static class DreadDirectorSceneBootstrap
     {
         private const string ScenePath = "Assets/Scenes/DreadDirectorNightWatch.unity";
         private const string GeneratedFolder = "Assets/Generated/DreadDirector";
         private const string AutomaticBuildRevisionKey = "DreadDirector.AutomaticSceneBuildRevision";
-        private const string AutomaticBuildRevision = "debug-monster-v3";
+        private const string AutomaticBuildRevision = "georgia-rooms-v1";
 
         [InitializeOnLoadMethod]
         private static void ScheduleMissingSceneBuild()
@@ -27,6 +27,11 @@ namespace DreadDirector.Editor
 
         private static void BuildMissingSceneWhenIdle()
         {
+            if (EditorApplication.isPlayingOrWillChangePlaymode)
+            {
+                return;
+            }
+
             if (EditorApplication.isCompiling || EditorApplication.isUpdating)
             {
                 EditorApplication.delayCall += BuildMissingSceneWhenIdle;
@@ -56,19 +61,24 @@ namespace DreadDirector.Editor
             RenderSettings.ambientMode = UnityEngine.Rendering.AmbientMode.Flat;
             RenderSettings.ambientLight = new Color(0.025f, 0.035f, 0.07f);
 
-            var wallMaterial = GetOrCreateMaterial("Walls", new Color(0.075f, 0.09f, 0.13f), Color.black);
-            var floorMaterial = GetOrCreateMaterial("Floor", new Color(0.028f, 0.033f, 0.045f), Color.black);
-            var deskMaterial = GetOrCreateMaterial("Desk", new Color(0.08f, 0.045f, 0.025f), Color.black);
-            var screenMaterial = GetOrCreateMaterial("Monitor", new Color(0.015f, 0.08f, 0.075f), new Color(0.01f, 0.9f, 0.7f));
             var apparitionMaterial = GetOrCreateMaterial("Apparition", new Color(0.28f, 0.01f, 0.025f), new Color(0.8f, 0f, 0.015f));
 
-            BuildRoom(wallMaterial, floorMaterial, deskMaterial, screenMaterial);
-            DreadDirectorOptionalAssets.TryInstantiateEnvironment();
-            var playerCamera = BuildPlayerCamera();
-            var roomLight = BuildRoomLight();
-            var apparitionVisual = BuildApparition(apparitionMaterial);
+            var usingGeorgiaLevel = DreadDirectorOptionalAssets.TryInstantiateGeorgiaLevel(scene, out var playerSpawn);
+            if (!usingGeorgiaLevel)
+            {
+                var wallMaterial = GetOrCreateMaterial("Walls", new Color(0.075f, 0.09f, 0.13f), Color.black);
+                var floorMaterial = GetOrCreateMaterial("Floor", new Color(0.028f, 0.033f, 0.045f), Color.black);
+                var deskMaterial = GetOrCreateMaterial("Desk", new Color(0.08f, 0.045f, 0.025f), Color.black);
+                var screenMaterial = GetOrCreateMaterial("Monitor", new Color(0.015f, 0.08f, 0.075f), new Color(0.01f, 0.9f, 0.7f));
+                BuildRoom(wallMaterial, floorMaterial, deskMaterial, screenMaterial);
+                DreadDirectorOptionalAssets.TryInstantiateEnvironment();
+            }
+
+            var playerCamera = BuildPlayerCamera(playerSpawn);
+            var roomLight = BuildRoomLight(playerSpawn.position);
+            var apparitionVisual = BuildApparition(apparitionMaterial, playerSpawn, usingGeorgiaLevel);
             var systems = BuildSystems(roomLight, apparitionVisual, playerCamera.parent);
-            ValidateGeneratedScene(systems, roomLight, apparitionVisual);
+            ValidateGeneratedScene(systems, roomLight, apparitionVisual, usingGeorgiaLevel);
 
             EditorSceneManager.SaveScene(scene, ScenePath);
             AssetDatabase.SaveAssets();
@@ -106,13 +116,10 @@ namespace DreadDirector.Editor
             window.GetComponent<Renderer>().material.SetColor("_EmissionColor", new Color(0.005f, 0.04f, 0.08f));
         }
 
-        private static Transform BuildPlayerCamera()
+        private static Transform BuildPlayerCamera(Pose spawn)
         {
             var player = new GameObject("Player");
-            player.transform.position = new Vector3(0f, 0f, -5.2f);
-            var lookDirection = new Vector3(0f, 0f, 1.4f) - player.transform.position;
-            lookDirection.y = 0f;
-            player.transform.rotation = Quaternion.LookRotation(lookDirection);
+            player.transform.SetPositionAndRotation(spawn.position, spawn.rotation);
 
             var characterController = player.AddComponent<CharacterController>();
             characterController.height = 1.8f;
@@ -137,10 +144,10 @@ namespace DreadDirector.Editor
             return cameraObject.transform;
         }
 
-        private static Light BuildRoomLight()
+        private static Light BuildRoomLight(Vector3 playerSpawn)
         {
             var lightObject = new GameObject("Failing Fluorescent Light");
-            lightObject.transform.position = new Vector3(0f, 4.35f, 1.2f);
+            lightObject.transform.position = playerSpawn + new Vector3(0f, 2.6f, 1.2f);
             var light = lightObject.AddComponent<Light>();
             light.type = LightType.Point;
             light.range = 13f;
@@ -150,10 +157,12 @@ namespace DreadDirector.Editor
             return light;
         }
 
-        private static GameObject BuildApparition(Material apparitionMaterial)
+        private static GameObject BuildApparition(Material apparitionMaterial, Pose playerSpawn, bool usingGeorgiaLevel)
         {
             var apparition = new GameObject("Debug Monster Visual");
-            apparition.transform.position = new Vector3(3.4f, 0f, 3.9f);
+            apparition.transform.position = usingGeorgiaLevel
+                ? playerSpawn.position + new Vector3(4.5f, 0f, 8f)
+                : new Vector3(3.4f, 0f, 3.9f);
             if (DreadDirectorOptionalAssets.TryPopulateCreature(apparition.transform))
             {
                 apparition.SetActive(true);
@@ -181,7 +190,18 @@ namespace DreadDirector.Editor
             var apparition = systems.AddComponent<ApparitionController>();
             var sting = systems.AddComponent<AudioStingController>();
             var hud = systems.AddComponent<BiometricDebugHud>();
-            var narration = systems.AddComponent<NarrationBridgeClient>();
+
+            var voiceAnchor = new GameObject("Monster Voice");
+            voiceAnchor.transform.SetParent(apparitionVisual.transform, false);
+            voiceAnchor.transform.localPosition = new Vector3(0f, 1.6f, 0f);
+            var narration = voiceAnchor.AddComponent<NarrationBridgeClient>();
+            var voiceSource = voiceAnchor.GetComponent<AudioSource>();
+            voiceSource.playOnAwake = false;
+            voiceSource.spatialBlend = 1f;
+            voiceSource.dopplerLevel = 0f;
+            voiceSource.rolloffMode = AudioRolloffMode.Linear;
+            voiceSource.minDistance = narration.MinimumDistance;
+            voiceSource.maxDistance = narration.MaximumDistance;
 
             calibration.DurationSeconds = 60f;
             calibration.Bridge = bridge;
@@ -204,25 +224,27 @@ namespace DreadDirector.Editor
             return systems;
         }
 
-        private static void ValidateGeneratedScene(GameObject systems, Light roomLight, GameObject apparitionVisual)
+        private static void ValidateGeneratedScene(GameObject systems, Light roomLight, GameObject apparitionVisual, bool usingGeorgiaLevel)
         {
             var bridge = systems.GetComponent<DirectorGameBridge>();
             var receiver = systems.GetComponent<DirectorUdpReceiver>();
             var fakeInput = systems.GetComponent<FakeDirectorInput>();
-            var narration = systems.GetComponent<NarrationBridgeClient>();
+            var narration = Object.FindAnyObjectByType<NarrationBridgeClient>();
             var playerController = Object.FindAnyObjectByType<FirstPersonController>();
+            var voiceSource = narration != null ? narration.GetComponent<AudioSource>() : null;
             if (Camera.main == null || roomLight == null || bridge == null || receiver == null || fakeInput == null ||
-                narration == null || playerController == null)
+                narration == null || voiceSource == null || playerController == null)
             {
-                throw new System.InvalidOperationException("Night Watch scene is missing a required camera, player controller, or Dread Director component.");
+                throw new System.InvalidOperationException("Night Watch scene is missing a required camera, player controller, monster voice, or Dread Director component.");
             }
 
             if (bridge.Calibration == null || bridge.LightFlicker == null || bridge.Apparition == null ||
-                bridge.AudioSting == null || bridge.DebugHud == null || bridge.Narration == null ||
+                bridge.AudioSting == null || bridge.DebugHud == null || bridge.Narration != narration ||
                 receiver.Bridge != bridge || fakeInput.Bridge != bridge || narration.DebugHud != bridge.DebugHud ||
-                playerController.CameraTransform != Camera.main.transform || bridge.Apparition.Target != playerController.transform)
+                playerController.CameraTransform != Camera.main.transform || bridge.Apparition.Target != playerController.transform ||
+                !narration.transform.IsChildOf(apparitionVisual.transform) || voiceSource.spatialBlend < 0.99f)
             {
-                throw new System.InvalidOperationException("Night Watch scene contains an unwired Dread Director, player, or monster target reference.");
+                throw new System.InvalidOperationException("Night Watch scene contains an unwired Dread Director, player, or spatial monster-voice reference.");
             }
 
             if (apparitionVisual == null || !apparitionVisual.activeSelf)
@@ -230,7 +252,19 @@ namespace DreadDirector.Editor
                 throw new System.InvalidOperationException("Night Watch debug monster must exist and begin visible.");
             }
 
-            Debug.Log("[Dread Director] Scene validation passed: player movement, camera, UDP/fake routing, effects, HUD, narration, and visible intensity-driven monster are wired.");
+            if (usingGeorgiaLevel)
+            {
+                var levelRoot = GameObject.Find("Georgia Backrooms Level");
+                if (levelRoot == null || levelRoot.transform.Find("RoomTiles") == null ||
+                    levelRoot.GetComponentsInChildren<Renderer>(true).Length == 0 ||
+                    levelRoot.GetComponentsInChildren<Collider>(true).Length == 0 ||
+                    GameObject.Find("Night Watch Security Room") != null)
+                {
+                    throw new System.InvalidOperationException("Georgia's Backrooms world was not imported cleanly or still overlaps the primitive fallback room.");
+                }
+            }
+
+            Debug.Log($"[Dread Director] Scene validation passed: {(usingGeorgiaLevel ? "Georgia Backrooms level" : "fallback room")}, player movement, camera, UDP/fake routing, effects, HUD, spatial monster voice, and visible intensity-driven monster are wired.");
         }
 
         private static GameObject CreatePrimitive(PrimitiveType type, string objectName, Transform parent, Vector3 position, Vector3 scale, Material material)

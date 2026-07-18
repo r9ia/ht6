@@ -14,7 +14,7 @@ The demo is generated reproducibly by `Assets/Editor/DreadDirectorSceneBootstrap
 4. Use `1` for low escalation, `2` for high escalation, `3` for panic/back-off, and `4` for recovery/re-arm.
 5. QNX-compatible high-level JSON can be sent to UDP port `7777`; fake input and UDP share `DirectorGameBridge`.
 
-The generated scene discovers and uses the approved Backrooms environment imported from `origin/georgia`; the primitive room remains a guaranteed fallback. The apparition uses the imported animated CC0 Demon by Quaternius, with the procedural creature retained as a fallback. Both are selected and wired by the bootstrap without Inspector setup.
+The generated scene uses Georgia's authored `Assets/Asset/BackroomsLikeAsset/Rooms.unity` world from `origin/georgia`, preserving its room tiles, props, colliders, lighting, and volume while replacing Georgia's player with the Dread Director controller and systems. The primitive security room and previously approved Backrooms prefab remain code-only fallbacks when that source scene is unavailable. The apparition uses the imported animated CC0 Demon by Quaternius, with the procedural creature retained as a fallback. Everything is selected and wired by the bootstrap without Inspector setup.
 
 ## Honest deployment topology
 
@@ -42,7 +42,7 @@ Unity receives high-level messages only:
 
 ## Optional narration bridge
 
-`narration-bridge/` is a local TypeScript presentation service with an offline line bank and opt-in Gemini/ElevenLabs enrichment. It accepts only allowlisted event labels, never biometrics or identity.
+`narration-bridge/` is a local TypeScript presentation service with rotating, non-repeating response pools adapted from the `smartspectra` branch and opt-in Gemini/ElevenLabs enrichment. It accepts only allowlisted gameplay event labels, never biometrics, identity, or microphone audio. When ElevenLabs audio is available, Unity plays it from a spatial voice anchor on the monster; subtitles remain the offline fallback.
 
 ```powershell
 Copy-Item .env.example .env
