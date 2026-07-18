@@ -13,13 +13,13 @@ import type { UnifoldBridgeConfig } from "./config.js";
  */
 export const REWARD_TIERS = {
   /** Survived a meaningful stretch of the night. */
-  endured: 0.25,
+  endured: 1.0,
   /** Survived the full night. */
-  survivor: 0.5,
+  survivor: 1.5,
   /** Survived the full night while holding composure — visibly less scared. */
-  composed_survivor: 1.0,
+  composed_survivor: 2.5,
   /** Survived a long night and stayed remarkably calm throughout. */
-  unshaken: 2.0,
+  unshaken: 5.0,
 } as const;
 
 export type RewardTier = keyof typeof REWARD_TIERS;

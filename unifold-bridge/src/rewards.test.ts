@@ -83,8 +83,8 @@ test("mock claim pays the tier amount and reports mock mode", async () => {
   assert.equal(result.status, "completed");
   assert.equal(result.mode, "mock");
   assert.equal(result.tier, "composed_survivor");
-  assert.equal(result.amountUsd, 1);
-  assert.equal(result.amountBaseUnits, "1000000");
+  assert.equal(result.amountUsd, 2.5);
+  assert.equal(result.amountBaseUnits, "2500000");
   assert.equal(result.reference, "mock_obt_nightwatch_abc123");
   assert.equal(result.reused, false);
 });

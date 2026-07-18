@@ -43,7 +43,7 @@ namespace DreadDirector.UI
             GUI.Label(new Rect(34f, 169f, 320f, 22f), $"LAST EVENT        {Bridge.LastEvent}", labelStyle);
             GUI.Label(new Rect(34f, 193f, 320f, 22f), $"SOURCE            {Bridge.LastSource}", labelStyle);
 
-            var currentEvent = Time.unscaledTime < eventUntil ? eventText : "[1] low  [2] high  [3] panic  [4] recover";
+            var currentEvent = Time.unscaledTime < eventUntil ? eventText : "[1] low  [2] high  [3] panic  [4] recover  [5] bounty";
             GUI.Label(new Rect(34f, 223f, 320f, 22f), currentEvent, labelStyle);
         }
 

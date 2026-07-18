@@ -17,7 +17,7 @@ namespace DreadDirector.Editor
         private const string ScenePath = "Assets/Scenes/DreadDirectorNightWatch.unity";
         private const string GeneratedFolder = "Assets/Generated/DreadDirector";
         private const string AutomaticBuildRevisionKey = "DreadDirector.AutomaticSceneBuildRevision";
-        private const string AutomaticBuildRevision = "backrooms-procedural-v1";
+        private const string AutomaticBuildRevision = "backrooms-procedural-v4";
 
         [InitializeOnLoadMethod]
         private static void ScheduleMissingSceneBuild()
@@ -56,10 +56,11 @@ namespace DreadDirector.Editor
 
             var scene = EditorSceneManager.NewScene(NewSceneSetup.EmptyScene, NewSceneMode.Single);
             RenderSettings.fog = true;
-            RenderSettings.fogColor = new Color(0.008f, 0.012f, 0.03f);
-            RenderSettings.fogDensity = 0.018f;
+            RenderSettings.fogMode = FogMode.ExponentialSquared;
+            RenderSettings.fogColor = new Color(0.11f, 0.11f, 0.085f);
+            RenderSettings.fogDensity = 0.032f;
             RenderSettings.ambientMode = UnityEngine.Rendering.AmbientMode.Flat;
-            RenderSettings.ambientLight = new Color(0.025f, 0.035f, 0.07f);
+            RenderSettings.ambientLight = new Color(0.42f, 0.40f, 0.31f);
 
             var apparitionMaterial = GetOrCreateMaterial("Apparition", new Color(0.28f, 0.01f, 0.025f), new Color(0.8f, 0f, 0.015f));
 
@@ -124,9 +125,13 @@ namespace DreadDirector.Editor
         /// </summary>
         private static Pose BuildBackroomsLevel()
         {
-            var floorMaterial = GetOrCreateMaterial("BackroomsFloor", new Color(0.19f, 0.16f, 0.07f), Color.black);
-            var wallMaterial = GetOrCreateMaterial("BackroomsWall", new Color(0.33f, 0.30f, 0.15f), Color.black);
-            var ceilingMaterial = GetOrCreateMaterial("BackroomsCeiling", new Color(0.20f, 0.19f, 0.12f), Color.black);
+            var wallTexture = GetOrCreateSurfaceTexture("WallAlbedo", new Color(0.62f, 0.57f, 0.33f), 0.45f, false, Color.black);
+            var floorTexture = GetOrCreateSurfaceTexture("FloorAlbedo", new Color(0.34f, 0.28f, 0.14f), 0.7f, true, new Color(0.10f, 0.08f, 0.04f));
+            var ceilingTexture = GetOrCreateSurfaceTexture("CeilingAlbedo", new Color(0.55f, 0.53f, 0.42f), 0.3f, true, new Color(0.18f, 0.18f, 0.15f));
+
+            var floorMaterial = GetOrCreateTexturedMaterial("BackroomsFloor", new Color(0.34f, 0.28f, 0.14f), floorTexture, new Vector2(16f, 16f), 0.12f);
+            var wallMaterial = GetOrCreateTexturedMaterial("BackroomsWall", new Color(0.64f, 0.58f, 0.34f), wallTexture, new Vector2(6f, 3f), 0.08f);
+            var ceilingMaterial = GetOrCreateTexturedMaterial("BackroomsCeiling", new Color(0.55f, 0.53f, 0.42f), ceilingTexture, new Vector2(12f, 12f), 0.05f);
             var lampMaterial = GetOrCreateMaterial("FluorescentPanel", new Color(0.85f, 0.86f, 0.72f), new Color(1.15f, 1.12f, 0.85f));
 
             const float halfExtent = 24f;   // level spans 48 x 48 units
@@ -151,26 +156,44 @@ namespace DreadDirector.Editor
             BuildWall(level.transform, wallMaterial, new Vector3(halfExtent, wallHeight * 0.5f, 0f), new Vector3(0.4f, wallHeight, halfExtent * 2f), "Wall East");
             BuildWall(level.transform, wallMaterial, new Vector3(-halfExtent, wallHeight * 0.5f, 0f), new Vector3(0.4f, wallHeight, halfExtent * 2f), "Wall West");
 
-            // Iconic backrooms support pillars in a grid. The central corridor (x = 0) is left
-            // clear so the player can see the apparition reveal straight ahead.
+            // Winding, maze-like walls. A serpentine of east-west baffles — each stopping short to
+            // leave a gap on an alternating side — forces the player to weave the full width of the
+            // level from the south spawn up toward the northern reveal, instead of crossing one open
+            // room past a grid of pillars. Short north-south spurs add nooks and dead-ends for
+            // backrooms texture without ever sealing the winding path.
+            var maze = new GameObject("Maze Walls");
+            maze.transform.SetParent(level.transform);
+            const float baffleThickness = 0.4f;
+
+            // East-west baffles (centerX, z, lengthX). Gaps alternate east/west to make an S-curve.
+            BuildWall(maze.transform, wallMaterial, new Vector3(-4f, wallHeight * 0.5f, -12f), new Vector3(40f, wallHeight, baffleThickness), "Baffle 1"); // gap east
+            BuildWall(maze.transform, wallMaterial, new Vector3(4f, wallHeight * 0.5f, -6f), new Vector3(40f, wallHeight, baffleThickness), "Baffle 2");   // gap west
+            BuildWall(maze.transform, wallMaterial, new Vector3(-4f, wallHeight * 0.5f, 0f), new Vector3(40f, wallHeight, baffleThickness), "Baffle 3");   // gap east
+            BuildWall(maze.transform, wallMaterial, new Vector3(4f, wallHeight * 0.5f, 6f), new Vector3(40f, wallHeight, baffleThickness), "Baffle 4");    // gap west
+
+            // Final baffle splits around a central gap that lines up with the apparition reveal.
+            BuildWall(maze.transform, wallMaterial, new Vector3(-14f, wallHeight * 0.5f, 12f), new Vector3(20f, wallHeight, baffleThickness), "Baffle 5 Left");
+            BuildWall(maze.transform, wallMaterial, new Vector3(14f, wallHeight * 0.5f, 12f), new Vector3(20f, wallHeight, baffleThickness), "Baffle 5 Right");
+
+            // North-south spurs sit mid-corridor (clear of the through-gaps) to create alcoves.
+            BuildWall(maze.transform, wallMaterial, new Vector3(0f, wallHeight * 0.5f, -9f), new Vector3(baffleThickness, wallHeight, 4f), "Spur A");
+            BuildWall(maze.transform, wallMaterial, new Vector3(-2f, wallHeight * 0.5f, 3f), new Vector3(baffleThickness, wallHeight, 4f), "Spur B");
+            BuildWall(maze.transform, wallMaterial, new Vector3(8f, wallHeight * 0.5f, 9f), new Vector3(baffleThickness, wallHeight, 4f), "Spur C");
+
+            // A few sparse support pillars tucked into the corners for backrooms flavor.
             var pillars = new GameObject("Pillars");
             pillars.transform.SetParent(level.transform);
-            var pillarColumns = new[] { -18f, -12f, -6f, 6f, 12f, 18f };
-            var pillarRows = new[] { -14f, -7f, 0f, 7f, 14f };
-            foreach (var px in pillarColumns)
+            var pillarSpots = new[]
             {
-                foreach (var pz in pillarRows)
-                {
-                    CreatePrimitive(PrimitiveType.Cube, "Pillar", pillars.transform,
-                        new Vector3(px, wallHeight * 0.5f, pz), new Vector3(1.2f, wallHeight, 1.2f), wallMaterial);
-                }
+                new Vector3(20f, wallHeight * 0.5f, 20f),
+                new Vector3(-20f, wallHeight * 0.5f, 20f),
+                new Vector3(20f, wallHeight * 0.5f, -20f),
+                new Vector3(-20f, wallHeight * 0.5f, -20f),
+            };
+            foreach (var spot in pillarSpots)
+            {
+                CreatePrimitive(PrimitiveType.Cube, "Pillar", pillars.transform, spot, new Vector3(1.2f, wallHeight, 1.2f), wallMaterial);
             }
-
-            // Partition walls break sightlines and form side rooms without blocking the corridor.
-            BuildWall(level.transform, wallMaterial, new Vector3(-9f, wallHeight * 0.5f, 10f), new Vector3(0.4f, wallHeight, 9f), "Partition A");
-            BuildWall(level.transform, wallMaterial, new Vector3(9f, wallHeight * 0.5f, -8f), new Vector3(0.4f, wallHeight, 10f), "Partition B");
-            BuildWall(level.transform, wallMaterial, new Vector3(-14f, wallHeight * 0.5f, -6f), new Vector3(8f, wallHeight, 0.4f), "Partition C");
-            BuildWall(level.transform, wallMaterial, new Vector3(14f, wallHeight * 0.5f, 6f), new Vector3(8f, wallHeight, 0.4f), "Partition D");
 
             // Ceiling fluorescent fixtures: emissive panels for the look, plus a limited set of
             // shadowless point lights for actual illumination (kept sparse for performance).
@@ -196,9 +219,9 @@ namespace DreadDirector.Editor
                     fillObject.transform.position = new Vector3(lx, ceilingY - 0.25f, lz);
                     var fill = fillObject.AddComponent<Light>();
                     fill.type = LightType.Point;
-                    fill.range = 14f;
-                    fill.intensity = 0.6f;
-                    fill.color = new Color(0.72f, 0.74f, 0.6f);
+                    fill.range = 17f;
+                    fill.intensity = 1.15f;
+                    fill.color = new Color(0.98f, 0.96f, 0.82f);
                     fill.shadows = LightShadows.None;
                 }
             }
@@ -263,6 +286,20 @@ namespace DreadDirector.Editor
                 : new Vector3(0f, 0f, 14f);
             if (DreadDirectorOptionalAssets.TryPopulateCreature(apparition.transform))
             {
+                // Imported FBX models ship with Built-in/Standard materials that render as magenta
+                // ("broken textures") under URP. Reassign a URP-compatible dark creature material.
+                var creatureMaterial = GetOrCreateMaterial("Creature", new Color(0.06f, 0.05f, 0.055f), new Color(0.16f, 0.004f, 0.007f));
+                foreach (var renderer in apparition.GetComponentsInChildren<Renderer>(true))
+                {
+                    var replacements = new Material[renderer.sharedMaterials.Length];
+                    for (var index = 0; index < replacements.Length; index++)
+                    {
+                        replacements[index] = creatureMaterial;
+                    }
+
+                    renderer.sharedMaterials = replacements;
+                }
+
                 apparition.SetActive(true);
                 return apparition;
             }
@@ -309,7 +346,10 @@ namespace DreadDirector.Editor
             flicker.RoomLight = roomLight;
             apparition.ApparitionVisual = apparitionVisual;
             apparition.Target = playerTarget;
-            apparition.AttackThreshold = 0.7f;
+            apparition.StopDistance = 1.4f;
+            apparition.MinimumChaseSpeed = 1.15f;
+            apparition.MaximumChaseSpeed = 6.5f;
+            apparition.KillDistance = 1.1f;
             bridge.Calibration = calibration;
             bridge.LightFlicker = flicker;
             bridge.Apparition = apparition;
@@ -323,6 +363,12 @@ namespace DreadDirector.Editor
             var reward = systems.AddComponent<UnifoldRewardBridgeClient>();
             reward.Director = bridge;
             reward.DebugHud = hud;
+
+            // Lethal contact: the creature can catch and kill the player, triggering a death screen.
+            var death = systems.AddComponent<DreadDirector.Player.PlayerDeathController>();
+            death.Apparition = apparition;
+            death.PlayerMovement = playerTarget.GetComponent<DreadDirector.Player.FirstPersonController>();
+            death.AudioSting = sting;
             return systems;
         }
 
@@ -411,6 +457,91 @@ namespace DreadDirector.Editor
 
             EditorUtility.SetDirty(material);
             return material;
+        }
+
+        /// <summary>
+        /// Creates (once) a URP Lit material that samples a tiled procedural albedo texture,
+        /// so surfaces read as textured backrooms walls/floor/ceiling instead of flat grey.
+        /// </summary>
+        private static Material GetOrCreateTexturedMaterial(string name, Color baseColor, Texture2D albedo, Vector2 tiling, float smoothness)
+        {
+            var material = GetOrCreateMaterial(name, baseColor, Color.black);
+            if (albedo != null)
+            {
+                material.mainTexture = albedo;
+                material.mainTextureScale = tiling;
+                if (material.HasProperty("_BaseMap"))
+                {
+                    material.SetTexture("_BaseMap", albedo);
+                    material.SetTextureScale("_BaseMap", tiling);
+                }
+            }
+
+            if (material.HasProperty("_Smoothness"))
+            {
+                material.SetFloat("_Smoothness", smoothness);
+            }
+
+            if (material.HasProperty("_Glossiness"))
+            {
+                material.SetFloat("_Glossiness", smoothness);
+            }
+
+            EditorUtility.SetDirty(material);
+            return material;
+        }
+
+        /// <summary>
+        /// Generates and caches a seamless procedural albedo texture (Perlin grime plus optional
+        /// tile grid lines) so the level has real surface detail without any imported image assets.
+        /// </summary>
+        private static Texture2D GetOrCreateSurfaceTexture(string name, Color baseColor, float grain, bool tileGrid, Color lineColor)
+        {
+            var path = $"{GeneratedFolder}/{name}.asset";
+            var existing = AssetDatabase.LoadAssetAtPath<Texture2D>(path);
+            if (existing != null)
+            {
+                return existing;
+            }
+
+            const int size = 256;
+            var texture = new Texture2D(size, size, TextureFormat.RGBA32, true)
+            {
+                name = name,
+                wrapMode = TextureWrapMode.Repeat
+            };
+
+            var random = new System.Random(name.GetHashCode());
+            var offset = (float)random.NextDouble() * 100f;
+            var pixels = new Color32[size * size];
+            for (var y = 0; y < size; y++)
+            {
+                for (var x = 0; x < size; x++)
+                {
+                    var broad = Mathf.PerlinNoise(offset + x * 0.015f, offset + y * 0.015f);
+                    var fine = Mathf.PerlinNoise(x * 0.09f, y * 0.09f);
+                    var speckle = (float)random.NextDouble();
+                    var shade = 1f + (broad - 0.5f) * grain + (fine - 0.5f) * grain * 0.5f - speckle * grain * 0.2f;
+                    var color = baseColor * Mathf.Max(0f, shade);
+
+                    if (tileGrid)
+                    {
+                        const int tile = 64;
+                        if (x % tile < 2 || y % tile < 2)
+                        {
+                            color = Color.Lerp(color, lineColor, 0.7f);
+                        }
+                    }
+
+                    color.a = 1f;
+                    pixels[y * size + x] = color;
+                }
+            }
+
+            texture.SetPixels32(pixels);
+            texture.Apply(true);
+            AssetDatabase.CreateAsset(texture, path);
+            return texture;
         }
 
         private static void EnsureFolder(string assetPath)

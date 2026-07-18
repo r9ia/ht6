@@ -73,16 +73,21 @@ namespace DreadDirector.Presentation
         private bool tracking;
         private bool claimInFlight;
         private string sessionClaimId;
+        private RewardResponse lastResponse;
+        private bool bannerStylesReady;
+        private GUIStyle bannerBoxStyle;
+        private GUIStyle bannerTitleStyle;
+        private GUIStyle bannerBodyStyle;
 
         private void Awake()
         {
             if (Director == null)
             {
-                Director = FindFirstObjectByType<DirectorGameBridge>();
+                Director = FindAnyObjectByType<DirectorGameBridge>();
             }
             if (DebugHud == null)
             {
-                DebugHud = Director != null ? Director.DebugHud : FindFirstObjectByType<BiometricDebugHud>();
+                DebugHud = Director != null ? Director.DebugHud : FindAnyObjectByType<BiometricDebugHud>();
             }
         }
 
@@ -183,6 +188,7 @@ namespace DreadDirector.Presentation
 
             if (request.result != UnityWebRequest.Result.Success)
             {
+                lastResponse = new RewardResponse { status = "failed" };
                 ShowLine("The bounty ledger is unreachable. Core gameplay is unaffected.", "bridge-offline");
                 Debug.Log($"[Dread Director] Unifold reward bridge unavailable: HTTP {request.responseCode}.", this);
                 yield break;
@@ -191,10 +197,12 @@ namespace DreadDirector.Presentation
             var response = JsonUtility.FromJson<RewardResponse>(request.downloadHandler.text);
             if (response == null || string.IsNullOrWhiteSpace(response.status))
             {
+                lastResponse = new RewardResponse { status = "failed" };
                 ShowLine("The bounty could not be confirmed.", "bridge-error");
                 yield break;
             }
 
+            lastResponse = response;
             switch (response.status)
             {
                 case "completed":
@@ -210,6 +218,96 @@ namespace DreadDirector.Presentation
                     ShowLine("The bounty failed to settle. You can try again.", "failed");
                     break;
             }
+        }
+
+        private void OnGUI()
+        {
+            var line = CurrentBannerBody(out var accent);
+            if (line == null)
+            {
+                return;
+            }
+
+            EnsureBannerStyles();
+            const float width = 480f;
+            const float height = 92f;
+            var x = (Screen.width - width) * 0.5f;
+            var y = Screen.height - height - 48f;
+            GUI.Box(new Rect(x, y, width, height), GUIContent.none, bannerBoxStyle);
+            bannerTitleStyle.normal.textColor = accent;
+            GUI.Label(new Rect(x + 20f, y + 14f, width - 40f, 26f), "NIGHT WATCH CONTRACT", bannerTitleStyle);
+            GUI.Label(new Rect(x + 20f, y + 46f, width - 40f, 30f), line, bannerBodyStyle);
+        }
+
+        /// <summary>Pick the banner line for the current state, or null to hide it.</summary>
+        private string CurrentBannerBody(out Color accent)
+        {
+            accent = new Color(0.95f, 0.28f, 0.3f);
+            if (claimInFlight)
+            {
+                accent = new Color(0.95f, 0.78f, 0.28f);
+                return "Securing your bounty on the Night Watch ledger...";
+            }
+
+            var status = lastResponse != null ? lastResponse.status : null;
+            if (status == "completed")
+            {
+                accent = new Color(0.36f, 0.86f, 0.52f);
+                var reused = lastResponse.reused ? "  (already claimed)" : string.Empty;
+                return $"Bounty settled: {lastResponse.amountUsd:0.00} USDC ({lastResponse.mode}){reused}";
+            }
+            if (status == "pending")
+            {
+                accent = new Color(0.36f, 0.72f, 0.95f);
+                return $"Bounty of {lastResponse.amountUsd:0.00} USDC is settling on-chain...";
+            }
+
+            var tier = EarnedTier();
+            if (tier != null)
+            {
+                accent = new Color(0.66f, 0.93f, 0.84f);
+                var retry = status == "failed" || status == "cancelled";
+                return $"{TierLabel(tier)} earned  —  press [5] to {(retry ? "retry" : "claim")} your bounty";
+            }
+            return null;
+        }
+
+        private static string TierLabel(string tier)
+        {
+            switch (tier)
+            {
+                case "endured": return "Endured the Night";
+                case "survivor": return "Night Watch Survivor";
+                case "composed_survivor": return "Composed Survivor";
+                case "unshaken": return "Unshaken";
+                default: return "Night Watch bounty";
+            }
+        }
+
+        private void EnsureBannerStyles()
+        {
+            if (bannerStylesReady)
+            {
+                return;
+            }
+
+            bannerBoxStyle = new GUIStyle(GUI.skin.box)
+            {
+                normal = { background = Texture2D.blackTexture },
+                padding = new RectOffset(14, 14, 12, 12)
+            };
+            bannerBodyStyle = new GUIStyle(GUI.skin.label)
+            {
+                fontSize = 15,
+                alignment = TextAnchor.MiddleCenter,
+                normal = { textColor = new Color(0.82f, 0.95f, 0.88f) }
+            };
+            bannerTitleStyle = new GUIStyle(bannerBodyStyle)
+            {
+                fontSize = 17,
+                fontStyle = FontStyle.Bold
+            };
+            bannerStylesReady = true;
         }
 
         private void ShowLine(string line, string source)

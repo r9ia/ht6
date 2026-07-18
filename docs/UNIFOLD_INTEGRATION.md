@@ -100,5 +100,6 @@ The placeholders above are now resolved. Verified from Unifold's project-scoped 
 - [x] Unity receives and displays normalized status (`UnifoldRewardBridgeClient`).
 - [x] Errors and unavailability show understandable UI and never break gameplay (offline/mock fallback, loopback guard).
 - [x] No secrets, wallet exports, signed transactions, participant identifiers, or biometric data are committed or transmitted to Unifold (only an opaque `claimId` + tier cross; `claimId` is reused as `external_user_id`).
-- [ ] A sandbox stablecoin payout completes end to end against live Unifold sandbox — pending real sandbox keys, a funded test treasury, and a recipient in `.env` (mock path verified offline; live path implemented but not yet exercised against the sandbox).
-- [ ] Any Solana support claim verified in the sandbox — not claimed by default (Base USDC).
+- [x] The end-to-end live sandbox path is exercised: a real outbound transfer (`obt_...`) is created on Unifold with the opaque `claimId` as `external_user_id` on **Base Sepolia (`84532`, chain `test` mode)** with Sepolia USDC `0x036cbd53842c5426634e7929541ec2318f3dcf7e`. Test-mode rejects mainnet chains (`outbound_transfer_invalid_chain_for_project_mode`), and the per-transfer minimum is ~0.85 USDC, so tier rewards start at 1.00 USDC.
+- [ ] A payout reaches `completed`: currently blocked only by `Insufficient treasury balance` — the test treasury (`ta_...`, address `0xb094567b05ede5ec1e884d934c525d3d2c925ae9`) must be funded with Base Sepolia test USDC in the Unifold dashboard. No code change is required once funded.
+- [ ] Any Solana support claim verified in the sandbox — not claimed by default (Base Sepolia USDC).

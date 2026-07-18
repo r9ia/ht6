@@ -41,10 +41,12 @@ Tiers ascend with survival duration and composure. Defaults (USD, capped by `UNI
 
 | Tier | Meaning | Default reward |
 | --- | --- | --- |
-| `endured` | Survived a meaningful stretch | 0.25 USDC |
-| `survivor` | Survived the full night | 0.50 USDC |
-| `composed_survivor` | Survived and held composure | 1.00 USDC |
-| `unshaken` | Survived a long night, stayed very calm | 2.00 USDC |
+| `endured` | Survived a meaningful stretch | 1.00 USDC |
+| `survivor` | Survived the full night | 1.50 USDC |
+| `composed_survivor` | Survived and held composure | 2.50 USDC |
+| `unshaken` | Survived a long night, stayed very calm | 5.00 USDC |
+
+Defaults clear the sandbox per-transfer minimum (Base Sepolia USDC, ~0.85 USDC). Tune amounts and `UNIFOLD_MAX_REWARD_USD` for your own project.
 
 ## API
 

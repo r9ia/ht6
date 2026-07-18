@@ -27,7 +27,28 @@ namespace DreadDirector.Director
 
         private void Start()
         {
+            if (Apparition != null)
+            {
+                Apparition.JumpScareTriggered += HandleJumpScare;
+            }
+
             SetStatus("Calibration in progress. Demo controls are available.", "System");
+        }
+
+        private void OnDestroy()
+        {
+            if (Apparition != null)
+            {
+                Apparition.JumpScareTriggered -= HandleJumpScare;
+            }
+        }
+
+        /// <summary>Jump-scare payload: loud sting, violent light failure, and HUD flash.</summary>
+        private void HandleJumpScare(float intensity)
+        {
+            AudioSting?.PlayJumpScare();
+            LightFlicker?.TriggerFlicker(1f);
+            DebugHud?.ShowEvent("JUMP SCARE");
         }
 
         public void ReceiveMessage(DirectorMessage message, string source = "Unknown")
@@ -93,7 +114,16 @@ namespace DreadDirector.Director
             LastEvent = "Escalate";
             LightFlicker?.TriggerFlicker(LastIntensity);
             Apparition?.SetIntensity(LastIntensity);
-            AudioSting?.PlaySting(LastIntensity);
+            if (LastIntensity >= 0.85f)
+            {
+                // High escalation forces an immediate jump scare (lunge + loud sting + flash).
+                Apparition?.TriggerJumpScare();
+            }
+            else
+            {
+                AudioSting?.PlaySting(LastIntensity);
+            }
+
             DebugHud?.ShowEvent(LastIntensity >= 0.7f
                 ? $"ATTACK INTENSITY {LastIntensity:0.00}"
                 : $"AGITATION INTENSITY {LastIntensity:0.00}");
