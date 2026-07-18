@@ -1,34 +1,49 @@
+using System.Collections;
 using DreadDirector.Horror;
+using DreadDirector.Presentation;
 using UnityEngine;
-using UnityEngine.InputSystem;
 
 namespace DreadDirector.Player
 {
     /// <summary>
-    /// Lethal outcome handler. When the apparition reaches the player it catches them: the game
-    /// freezes, a death overlay appears, and the player can respawn in place. This is presentation
-    /// only — the "death" is a game-over state, not any modeling of real harm.
+    /// Plays the lethal "caught" animation when the apparition reaches the player: the creature
+    /// lunges into the camera, the view is thrown around as if struck, and the screen floods red
+    /// then black. When the lunge finishes it hands off to the <see cref="NightWatchContract"/>,
+    /// which shows the death/leaderboard screen. Presentation only — a game-over state, not any
+    /// modeling of real harm.
     /// </summary>
     public sealed class PlayerDeathController : MonoBehaviour
     {
         public ApparitionController Apparition;
         public FirstPersonController PlayerMovement;
         public AudioStingController AudioSting;
+        public NightWatchContract Contract;
 
-        private bool dead;
-        private Vector3 spawnPosition;
-        private Quaternion spawnRotation;
-        private GUIStyle titleStyle;
-        private GUIStyle promptStyle;
-        private GUIStyle overlayStyle;
-        private Texture2D overlayTexture;
+        [Min(0.2f)] public float LungeDuration = 0.9f;
+
+        private bool dying;
+        private bool animationDone;
+        private float fadeAlpha;
+        private Quaternion cameraStartLocalRotation;
+        private Vector3 monsterStartScale;
+        private Texture2D fadeTexture;
 
         private void Start()
         {
-            if (PlayerMovement != null)
+            // Capture sane defaults so a restart that never triggered the lunge still restores
+            // valid camera/monster transforms.
+            if (PlayerMovement != null && PlayerMovement.CameraTransform != null)
             {
-                spawnPosition = PlayerMovement.transform.position;
-                spawnRotation = PlayerMovement.transform.rotation;
+                cameraStartLocalRotation = PlayerMovement.CameraTransform.localRotation;
+            }
+            else
+            {
+                cameraStartLocalRotation = Quaternion.identity;
+            }
+
+            if (Apparition != null && Apparition.ApparitionVisual != null)
+            {
+                monsterStartScale = Apparition.ApparitionVisual.transform.localScale;
             }
 
             if (Apparition != null)
@@ -44,116 +59,142 @@ namespace DreadDirector.Player
                 Apparition.PlayerCaught -= HandleCaught;
             }
 
-            if (overlayTexture != null)
+            if (fadeTexture != null)
             {
-                Destroy(overlayTexture);
-            }
-        }
-
-        private void Update()
-        {
-            if (!dead)
-            {
-                return;
-            }
-
-            var keyboard = Keyboard.current;
-            if (keyboard != null && keyboard.rKey.wasPressedThisFrame)
-            {
-                Respawn();
+                Destroy(fadeTexture);
             }
         }
 
         private void HandleCaught()
         {
-            if (dead)
+            if (dying || animationDone)
             {
                 return;
             }
 
-            dead = true;
-            AudioSting?.PlayJumpScare();
+            dying = true;
 
-            // Disabling the controller also releases the cursor (see FirstPersonController.OnDisable).
             if (PlayerMovement != null)
             {
                 PlayerMovement.enabled = false;
             }
 
-            Cursor.lockState = CursorLockMode.None;
-            Cursor.visible = true;
-
-            // Freeze the world so the creature stays in the player's face on the death frame.
-            Time.timeScale = 0f;
-        }
-
-        private void Respawn()
-        {
-            dead = false;
-            Time.timeScale = 1f;
-
-            if (PlayerMovement != null)
+            // Take over the creature so we can drive the lunge without the chase logic fighting us.
+            if (Apparition != null)
             {
-                // A CharacterController resists direct transform moves; toggle it around the teleport.
-                var controller = PlayerMovement.GetComponent<CharacterController>();
-                if (controller != null)
-                {
-                    controller.enabled = false;
-                }
-
-                PlayerMovement.transform.SetPositionAndRotation(spawnPosition, spawnRotation);
-
-                if (controller != null)
-                {
-                    controller.enabled = true;
-                }
-
-                PlayerMovement.enabled = true;
+                Apparition.enabled = false;
             }
 
-            Apparition?.ResetToHome();
+            StartCoroutine(LungeSequence());
+        }
 
-            Cursor.lockState = CursorLockMode.Locked;
-            Cursor.visible = false;
+        private IEnumerator LungeSequence()
+        {
+            AudioSting?.PlayJumpScare();
+
+            var camera = PlayerMovement != null ? PlayerMovement.CameraTransform : null;
+            var monster = Apparition != null && Apparition.ApparitionVisual != null
+                ? Apparition.ApparitionVisual.transform
+                : null;
+
+            if (camera != null)
+            {
+                cameraStartLocalRotation = camera.localRotation;
+            }
+            if (monster != null)
+            {
+                monsterStartScale = monster.localScale;
+            }
+
+            var elapsed = 0f;
+            while (elapsed < LungeDuration)
+            {
+                var t = elapsed / LungeDuration;
+
+                if (camera != null && monster != null)
+                {
+                    // Rush the creature into the player's face.
+                    var forward = camera.forward;
+                    var target = camera.position + forward * Mathf.Lerp(1.7f, 0.45f, t);
+                    target.y = camera.position.y - 0.1f;
+                    monster.position = Vector3.Lerp(monster.position, target, 1f - Mathf.Exp(-10f * Time.unscaledDeltaTime));
+                    monster.rotation = Quaternion.LookRotation(monster.position - camera.position, Vector3.up);
+                    monster.localScale = monsterStartScale * Mathf.Lerp(1f, 1.6f, t);
+
+                    // Throw the view around as if being struck.
+                    var shake = Mathf.Lerp(1.5f, 14f, t);
+                    var offset = new Vector3(
+                        (Mathf.PerlinNoise(Time.unscaledTime * 30f, 0f) - 0.5f) * shake,
+                        (Mathf.PerlinNoise(0f, Time.unscaledTime * 30f) - 0.5f) * shake,
+                        (Mathf.PerlinNoise(Time.unscaledTime * 22f, 5f) - 0.5f) * shake * 1.5f);
+                    camera.localRotation = cameraStartLocalRotation * Quaternion.Euler(offset);
+                }
+
+                fadeAlpha = Mathf.SmoothStep(0f, 1f, t);
+                elapsed += Time.unscaledDeltaTime;
+                yield return null;
+            }
+
+            fadeAlpha = 1f;
+            animationDone = true;
+            dying = false;
+
+            Cursor.lockState = CursorLockMode.None;
+            Cursor.visible = true;
+            Time.timeScale = 0f;
+
+            // Hand off to the contract, which records the leaderboard and shows the end screen.
+            Contract?.EndRun(false);
+        }
+
+        /// <summary>Restores everything after a respawn (called by the contract on restart).</summary>
+        public void ResetDeath()
+        {
+            StopAllCoroutines();
+            dying = false;
+            animationDone = false;
+            fadeAlpha = 0f;
+
+            if (PlayerMovement != null && PlayerMovement.CameraTransform != null)
+            {
+                PlayerMovement.CameraTransform.localRotation = cameraStartLocalRotation;
+            }
+
+            if (Apparition != null)
+            {
+                if (Apparition.ApparitionVisual != null && monsterStartScale != Vector3.zero)
+                {
+                    Apparition.ApparitionVisual.transform.localScale = monsterStartScale;
+                }
+                Apparition.enabled = true;
+            }
         }
 
         private void OnGUI()
         {
-            if (!dead)
+            // Only draw the red/black flood during the lunge; once done, the contract owns the screen.
+            if (!dying || fadeAlpha <= 0f)
             {
                 return;
             }
 
-            EnsureStyles();
-            GUI.DrawTexture(new Rect(0f, 0f, Screen.width, Screen.height), overlayTexture, ScaleMode.StretchToFill);
-            GUI.Label(new Rect(0f, Screen.height * 0.5f - 70f, Screen.width, 70f), "YOU DIED", titleStyle);
-            GUI.Label(new Rect(0f, Screen.height * 0.5f + 8f, Screen.width, 32f), "Press R to try again", promptStyle);
+            EnsureFadeTexture();
+            var previous = GUI.color;
+            GUI.color = new Color(1f, 1f, 1f, fadeAlpha);
+            GUI.DrawTexture(new Rect(0f, 0f, Screen.width, Screen.height), fadeTexture, ScaleMode.StretchToFill);
+            GUI.color = previous;
         }
 
-        private void EnsureStyles()
+        private void EnsureFadeTexture()
         {
-            if (titleStyle != null)
+            if (fadeTexture != null)
             {
                 return;
             }
 
-            overlayTexture = new Texture2D(1, 1);
-            overlayTexture.SetPixel(0, 0, new Color(0.05f, 0f, 0f, 0.82f));
-            overlayTexture.Apply();
-
-            titleStyle = new GUIStyle
-            {
-                fontSize = 72,
-                fontStyle = FontStyle.Bold,
-                alignment = TextAnchor.MiddleCenter,
-                normal = { textColor = new Color(0.78f, 0.05f, 0.06f) }
-            };
-            promptStyle = new GUIStyle
-            {
-                fontSize = 22,
-                alignment = TextAnchor.MiddleCenter,
-                normal = { textColor = new Color(0.85f, 0.82f, 0.78f) }
-            };
+            fadeTexture = new Texture2D(1, 1);
+            fadeTexture.SetPixel(0, 0, new Color(0.28f, 0f, 0f));
+            fadeTexture.Apply();
         }
     }
 }

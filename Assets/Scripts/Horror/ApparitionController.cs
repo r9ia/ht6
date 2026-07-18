@@ -33,7 +33,7 @@ namespace DreadDirector.Horror
         [Min(0.1f)] public float JumpScareDistance = 2.2f;
         [Min(0f)] public float JumpScareCooldown = 6f;
         [Range(0f, 1f)] public float JumpScareMinIntensity = 0.15f;
-        [Min(0.2f)] public float JumpScareFaceDistance = 1f;
+        [Min(0.2f)] public float JumpScareFaceDistance = 2.5f;
 
         [Header("Contact kill")]
         [Min(0f)] public float KillDistance = 1.1f;

@@ -7,6 +7,8 @@ using DreadDirector.UI;
 using UnityEditor;
 using UnityEditor.SceneManagement;
 using UnityEngine;
+using UnityEngine.Rendering;
+using UnityEngine.Rendering.Universal;
 using UnityEngine.SceneManagement;
 
 namespace DreadDirector.Editor
@@ -17,7 +19,7 @@ namespace DreadDirector.Editor
         private const string ScenePath = "Assets/Scenes/DreadDirectorNightWatch.unity";
         private const string GeneratedFolder = "Assets/Generated/DreadDirector";
         private const string AutomaticBuildRevisionKey = "DreadDirector.AutomaticSceneBuildRevision";
-        private const string AutomaticBuildRevision = "backrooms-procedural-v4";
+        private const string AutomaticBuildRevision = "backrooms-procedural-v5";
 
         [InitializeOnLoadMethod]
         private static void ScheduleMissingSceneBuild()
@@ -58,7 +60,7 @@ namespace DreadDirector.Editor
             RenderSettings.fog = true;
             RenderSettings.fogMode = FogMode.ExponentialSquared;
             RenderSettings.fogColor = new Color(0.11f, 0.11f, 0.085f);
-            RenderSettings.fogDensity = 0.032f;
+            RenderSettings.fogDensity = 0.045f;
             RenderSettings.ambientMode = UnityEngine.Rendering.AmbientMode.Flat;
             RenderSettings.ambientLight = new Color(0.42f, 0.40f, 0.31f);
 
@@ -75,6 +77,7 @@ namespace DreadDirector.Editor
             var roomLight = BuildRoomLight(playerSpawn.position);
             var apparitionVisual = BuildApparition(apparitionMaterial, playerSpawn, usingGeorgiaLevel);
             var systems = BuildSystems(roomLight, apparitionVisual, playerCamera.parent);
+            BuildPostProcessing();
             ValidateGeneratedScene(systems, roomLight, apparitionVisual, usingGeorgiaLevel);
 
             EditorSceneManager.SaveScene(scene, ScenePath);
@@ -209,6 +212,7 @@ namespace DreadDirector.Editor
                 }
             }
 
+            var fillLights = new System.Collections.Generic.List<Light>();
             var fillGrid = new[] { -12f, 0f, 12f };
             foreach (var lx in fillGrid)
             {
@@ -223,8 +227,13 @@ namespace DreadDirector.Editor
                     fill.intensity = 1.15f;
                     fill.color = new Color(0.98f, 0.96f, 0.82f);
                     fill.shadows = LightShadows.None;
+                    fillLights.Add(fill);
                 }
             }
+
+            // Failing-tube flicker across the ceiling fluorescents for backrooms atmosphere.
+            var flickerFx = lightsRoot.AddComponent<DreadDirector.Horror.FluorescentFlicker>();
+            flickerFx.Lights = fillLights.ToArray();
 
             // Spawn slightly above the floor at the south end, facing +Z down the central corridor
             // toward the apparition. Gravity settles the CharacterController onto the floor.
@@ -259,6 +268,11 @@ namespace DreadDirector.Editor
             camera.nearClipPlane = 0.05f;
             cameraObject.AddComponent<AudioListener>();
 
+            // Enable URP post-processing (bloom/vignette/grade/grain live on a global volume).
+            var cameraData = camera.GetUniversalAdditionalCameraData();
+            cameraData.renderPostProcessing = true;
+            cameraData.antialiasing = AntialiasingMode.SubpixelMorphologicalAntiAliasing;
+
             var movement = player.AddComponent<DreadDirector.Player.FirstPersonController>();
             movement.CameraTransform = cameraObject.transform;
             movement.MoveSpeed = 2.5f;
@@ -276,6 +290,50 @@ namespace DreadDirector.Editor
             light.color = new Color(0.68f, 0.78f, 1f);
             light.shadows = LightShadows.Soft;
             return light;
+        }
+
+        /// <summary>
+        /// Adds a global URP post-processing volume (bloom, vignette, colour grade, tonemap, grain)
+        /// so the fluorescent panels glow and the backrooms gain cinematic contrast and mood.
+        /// </summary>
+        private static void BuildPostProcessing()
+        {
+            var profile = ScriptableObject.CreateInstance<VolumeProfile>();
+            var profilePath = $"{GeneratedFolder}/NightWatchPostProfile.asset";
+            AssetDatabase.CreateAsset(profile, profilePath);
+
+            var bloom = profile.Add<Bloom>(true);
+            bloom.intensity.Override(0.95f);
+            bloom.threshold.Override(0.85f);
+            bloom.scatter.Override(0.72f);
+            bloom.tint.Override(new Color(1f, 0.98f, 0.9f));
+
+            var vignette = profile.Add<Vignette>(true);
+            vignette.intensity.Override(0.42f);
+            vignette.smoothness.Override(0.55f);
+            vignette.color.Override(Color.black);
+
+            var colorAdjustments = profile.Add<ColorAdjustments>(true);
+            colorAdjustments.postExposure.Override(0.15f);
+            colorAdjustments.contrast.Override(14f);
+            colorAdjustments.saturation.Override(-6f);
+            colorAdjustments.colorFilter.Override(new Color(1f, 0.97f, 0.88f));
+
+            var tonemapping = profile.Add<Tonemapping>(true);
+            tonemapping.mode.Override(TonemappingMode.ACES);
+
+            var grain = profile.Add<FilmGrain>(true);
+            grain.type.Override(FilmGrainLookup.Medium1);
+            grain.intensity.Override(0.32f);
+            grain.response.Override(0.8f);
+
+            EditorUtility.SetDirty(profile);
+
+            var volumeObject = new GameObject("Global Post Volume");
+            var volume = volumeObject.AddComponent<Volume>();
+            volume.isGlobal = true;
+            volume.priority = 1f;
+            volume.sharedProfile = profile;
         }
 
         private static GameObject BuildApparition(Material apparitionMaterial, Pose playerSpawn, bool usingGeorgiaLevel)
@@ -366,9 +424,19 @@ namespace DreadDirector.Editor
 
             // Lethal contact: the creature can catch and kill the player, triggering a death screen.
             var death = systems.AddComponent<DreadDirector.Player.PlayerDeathController>();
+            var playerMovement = playerTarget.GetComponent<DreadDirector.Player.FirstPersonController>();
             death.Apparition = apparition;
-            death.PlayerMovement = playerTarget.GetComponent<DreadDirector.Player.FirstPersonController>();
+            death.PlayerMovement = playerMovement;
             death.AudioSting = sting;
+
+            // Night Watch Contract: 1-minute run, top-right Solana balance that accrues with calm,
+            // and a local leaderboard that pays out more the chiller the player stayed.
+            var contract = systems.AddComponent<DreadDirector.Presentation.NightWatchContract>();
+            contract.Director = bridge;
+            contract.Player = playerMovement;
+            contract.Apparition = apparition;
+            contract.Death = death;
+            death.Contract = contract;
             return systems;
         }
 
