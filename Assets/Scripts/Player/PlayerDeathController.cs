@@ -106,6 +106,8 @@ namespace DreadDirector.Player
                 monsterStartScale = monster.localScale;
             }
 
+            var renderers = monster != null ? monster.GetComponentsInChildren<Renderer>() : null;
+
             var elapsed = 0f;
             while (elapsed < LungeDuration)
             {
@@ -113,24 +115,35 @@ namespace DreadDirector.Player
 
                 if (camera != null && monster != null)
                 {
-                    // Rush the creature into the player's face.
-                    var forward = camera.forward;
-                    var target = camera.position + forward * Mathf.Lerp(1.7f, 0.45f, t);
-                    target.y = camera.position.y - 0.1f;
-                    monster.position = Vector3.Lerp(monster.position, target, 1f - Mathf.Exp(-10f * Time.unscaledDeltaTime));
-                    monster.rotation = Quaternion.LookRotation(monster.position - camera.position, Vector3.up);
-                    monster.localScale = monsterStartScale * Mathf.Lerp(1f, 1.6f, t);
+                    // Rush the creature into the player, staying on the ground (don't float it up).
+                    var playerXZ = new Vector3(camera.position.x, monster.position.y, camera.position.z);
+                    var toPlayer = playerXZ - monster.position;
+                    var dir = toPlayer.sqrMagnitude > 0.0001f ? toPlayer.normalized : monster.forward;
+                    var standoff = Mathf.Lerp(1.9f, 0.65f, t);
+                    var target = playerXZ - dir * standoff;
+                    monster.position = Vector3.Lerp(monster.position, target, 1f - Mathf.Exp(-12f * Time.unscaledDeltaTime));
+                    // Demon is authored facing -Z, so +Z must point away from the player.
+                    monster.rotation = Quaternion.LookRotation(-dir, Vector3.up);
+                    monster.localScale = monsterStartScale * Mathf.Lerp(1f, 1.35f, t);
 
-                    // Throw the view around as if being struck.
-                    var shake = Mathf.Lerp(1.5f, 14f, t);
-                    var offset = new Vector3(
-                        (Mathf.PerlinNoise(Time.unscaledTime * 30f, 0f) - 0.5f) * shake,
-                        (Mathf.PerlinNoise(0f, Time.unscaledTime * 30f) - 0.5f) * shake,
-                        (Mathf.PerlinNoise(Time.unscaledTime * 22f, 5f) - 0.5f) * shake * 1.5f);
-                    camera.localRotation = cameraStartLocalRotation * Quaternion.Euler(offset);
+                    // Lock the camera onto the creature's FACE so it fills the screen (fixes it
+                    // sitting above the view), then throw the view around as if being struck.
+                    var facePoint = FacePoint(renderers, monster);
+                    var toFace = facePoint - camera.position;
+                    if (toFace.sqrMagnitude > 0.0001f)
+                    {
+                        var lookRotation = Quaternion.LookRotation(toFace.normalized, Vector3.up);
+                        var shake = Mathf.Lerp(1.2f, 10f, t);
+                        var offset = new Vector3(
+                            (Mathf.PerlinNoise(Time.unscaledTime * 32f, 0f) - 0.5f) * shake,
+                            (Mathf.PerlinNoise(0f, Time.unscaledTime * 32f) - 0.5f) * shake,
+                            (Mathf.PerlinNoise(Time.unscaledTime * 24f, 5f) - 0.5f) * shake);
+                        camera.rotation = lookRotation * Quaternion.Euler(offset);
+                    }
                 }
 
-                fadeAlpha = Mathf.SmoothStep(0f, 1f, t);
+                // Hold the red flood back until the second half so the lunge is clearly visible.
+                fadeAlpha = Mathf.SmoothStep(0f, 1f, Mathf.InverseLerp(0.5f, 1f, t)) * 0.9f;
                 elapsed += Time.unscaledDeltaTime;
                 yield return null;
             }
@@ -145,6 +158,41 @@ namespace DreadDirector.Player
 
             // Hand off to the contract, which records the leaderboard and shows the end screen.
             Contract?.EndRun(false);
+        }
+
+        /// <summary>Approximates a point on the creature's head to aim the camera at.</summary>
+        private static Vector3 FacePoint(Renderer[] renderers, Transform fallback)
+        {
+            if (renderers != null && renderers.Length > 0)
+            {
+                var haveBounds = false;
+                var bounds = new Bounds();
+                for (var i = 0; i < renderers.Length; i++)
+                {
+                    if (renderers[i] == null)
+                    {
+                        continue;
+                    }
+
+                    if (!haveBounds)
+                    {
+                        bounds = renderers[i].bounds;
+                        haveBounds = true;
+                    }
+                    else
+                    {
+                        bounds.Encapsulate(renderers[i].bounds);
+                    }
+                }
+
+                if (haveBounds)
+                {
+                    // Bias upward toward the head.
+                    return new Vector3(bounds.center.x, Mathf.Lerp(bounds.center.y, bounds.max.y, 0.55f), bounds.center.z);
+                }
+            }
+
+            return fallback.position + Vector3.up * 1.5f;
         }
 
         /// <summary>Restores everything after a respawn (called by the contract on restart).</summary>

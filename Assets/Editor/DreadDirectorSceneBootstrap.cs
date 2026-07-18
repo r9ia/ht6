@@ -19,7 +19,7 @@ namespace DreadDirector.Editor
         private const string ScenePath = "Assets/Scenes/DreadDirectorNightWatch.unity";
         private const string GeneratedFolder = "Assets/Generated/DreadDirector";
         private const string AutomaticBuildRevisionKey = "DreadDirector.AutomaticSceneBuildRevision";
-        private const string AutomaticBuildRevision = "backrooms-procedural-v13";
+        private const string AutomaticBuildRevision = "backrooms-procedural-v14";
 
         [InitializeOnLoadMethod]
         private static void ScheduleMissingSceneBuild()
@@ -60,9 +60,9 @@ namespace DreadDirector.Editor
             RenderSettings.fog = true;
             RenderSettings.fogMode = FogMode.ExponentialSquared;
             RenderSettings.fogColor = new Color(0.10f, 0.10f, 0.078f);
-            RenderSettings.fogDensity = 0.04f;
+            RenderSettings.fogDensity = 0.042f;
             RenderSettings.ambientMode = UnityEngine.Rendering.AmbientMode.Flat;
-            RenderSettings.ambientLight = new Color(0.48f, 0.46f, 0.37f);
+            RenderSettings.ambientLight = new Color(0.44f, 0.42f, 0.34f);
 
             var apparitionMaterial = GetOrCreateMaterial("Apparition", new Color(0.28f, 0.01f, 0.025f), new Color(0.8f, 0f, 0.015f));
 
@@ -224,7 +224,7 @@ namespace DreadDirector.Editor
                     var fill = fillObject.AddComponent<Light>();
                     fill.type = LightType.Point;
                     fill.range = 18f;
-                    fill.intensity = 1.35f;
+                    fill.intensity = 1.25f;
                     fill.color = new Color(0.98f, 0.96f, 0.82f);
                     fill.shadows = LightShadows.None;
                     fillLights.Add(fill);
