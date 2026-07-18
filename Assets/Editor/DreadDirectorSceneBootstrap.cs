@@ -138,7 +138,7 @@ namespace DreadDirector.Editor
             camera.nearClipPlane = 0.05f;
             cameraObject.AddComponent<AudioListener>();
 
-            var movement = player.AddComponent<FirstPersonController>();
+            var movement = player.AddComponent<DreadDirector.Player.FirstPersonController>();
             movement.CameraTransform = cameraObject.transform;
             movement.MoveSpeed = 2.5f;
             return cameraObject.transform;
@@ -230,7 +230,7 @@ namespace DreadDirector.Editor
             var receiver = systems.GetComponent<DirectorUdpReceiver>();
             var fakeInput = systems.GetComponent<FakeDirectorInput>();
             var narration = Object.FindAnyObjectByType<NarrationBridgeClient>();
-            var playerController = Object.FindAnyObjectByType<FirstPersonController>();
+            var playerController = Object.FindAnyObjectByType<DreadDirector.Player.FirstPersonController>();
             var voiceSource = narration != null ? narration.GetComponent<AudioSource>() : null;
             if (Camera.main == null || roomLight == null || bridge == null || receiver == null || fakeInput == null ||
                 narration == null || voiceSource == null || playerController == null)

@@ -169,3 +169,6 @@ Packages/packages-lock.json linguist-generated
 
 # Exceptions for .asset files such as lightning pre-baking
 LightingData.asset     binary
+
+# TerrainData files are Unity native binary assets; never apply text/EOL conversion.
+Assets/TerrainDemoScene_URP/Terrain/Data/*.asset binary !eol

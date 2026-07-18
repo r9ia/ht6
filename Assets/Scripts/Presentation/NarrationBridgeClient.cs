@@ -67,9 +67,16 @@ namespace DreadDirector.Presentation
 
         [Header("Local bridge")]
         public string Endpoint = "http://127.0.0.1:8787/v1/narration";
+        public string ConversationEndpoint = "http://127.0.0.1:8787/v1/conversation";
         [Min(1)] public int TimeoutSeconds = 3;
+        [Min(1)] public int ConversationTimeoutSeconds = 20;
         [Min(0f)] public float RepeatCooldownSeconds = 8f;
         public BiometricDebugHud DebugHud;
+
+        [Header("Opt-in microphone conversation")]
+        public bool EnableMicrophoneConversation = true;
+        [Range(1, 10)] public int ConversationSeconds = 5;
+        [Range(8000, 48000)] public int ConversationSampleRate = 16000;
 
         [Header("Monster voice")]
         [Range(0f, 1f)] public float VoiceVolume = 0.75f;
@@ -80,6 +87,8 @@ namespace DreadDirector.Presentation
         private readonly Dictionary<string, int> lastOfflineLineIndices = new();
         private AudioSource voiceSource;
         private bool loggedUnavailable;
+        private bool conversationInProgress;
+        private string activeMicrophoneDevice;
         private int requestGeneration;
 
         private void Awake()
@@ -92,6 +101,29 @@ namespace DreadDirector.Presentation
             voiceSource.rolloffMode = AudioRolloffMode.Linear;
             voiceSource.minDistance = MinimumDistance;
             voiceSource.maxDistance = Mathf.Max(MinimumDistance, MaximumDistance);
+        }
+
+        private void Update()
+        {
+            if (!EnableMicrophoneConversation || conversationInProgress)
+            {
+                return;
+            }
+
+            var keyboard = UnityEngine.InputSystem.Keyboard.current;
+            if (keyboard != null && keyboard.vKey.wasPressedThisFrame)
+            {
+                StartCoroutine(CaptureConversation());
+            }
+        }
+
+        private void OnDisable()
+        {
+            if (conversationInProgress)
+            {
+                Microphone.End(activeMicrophoneDevice);
+                conversationInProgress = false;
+            }
         }
 
         public void Announce(string eventLabel)
@@ -112,6 +144,102 @@ namespace DreadDirector.Presentation
             requestGeneration++;
             voiceSource?.Stop();
             StartCoroutine(RequestNarration(eventLabel, requestGeneration));
+        }
+
+        private IEnumerator CaptureConversation()
+        {
+            conversationInProgress = true;
+            if (!IsLoopbackEndpoint(ConversationEndpoint))
+            {
+                Debug.LogWarning("[Dread Director] Microphone conversation endpoint must be loopback.", this);
+                conversationInProgress = false;
+                yield break;
+            }
+
+            if (!Application.HasUserAuthorization(UserAuthorization.Microphone))
+            {
+                yield return Application.RequestUserAuthorization(UserAuthorization.Microphone);
+            }
+            if (!Application.HasUserAuthorization(UserAuthorization.Microphone) || Microphone.devices.Length == 0)
+            {
+                ShowLine("The dark cannot hear you. No microphone is available.", "microphone-local");
+                conversationInProgress = false;
+                yield break;
+            }
+
+            activeMicrophoneDevice = null;
+            var clip = Microphone.Start(activeMicrophoneDevice, false, ConversationSeconds, ConversationSampleRate);
+            if (clip == null)
+            {
+                ShowLine("The dark cannot hear you.", "microphone-local");
+                conversationInProgress = false;
+                yield break;
+            }
+
+            DebugHud?.ShowEvent($"MICROPHONE LISTENING // {ConversationSeconds}s // [V]");
+            var startDeadline = Time.realtimeSinceStartup + 1f;
+            while (Microphone.GetPosition(activeMicrophoneDevice) <= 0 && Time.realtimeSinceStartup < startDeadline)
+            {
+                yield return null;
+            }
+            if (Microphone.GetPosition(activeMicrophoneDevice) <= 0)
+            {
+                Microphone.End(activeMicrophoneDevice);
+                Destroy(clip);
+                ShowLine("The microphone did not start.", "microphone-local");
+                conversationInProgress = false;
+                yield break;
+            }
+
+            yield return new WaitForSecondsRealtime(ConversationSeconds);
+            var capturedFrames = Microphone.GetPosition(activeMicrophoneDevice);
+            Microphone.End(activeMicrophoneDevice);
+            if (capturedFrames <= 0)
+            {
+                capturedFrames = clip.samples;
+            }
+
+            var samples = new float[capturedFrames * clip.channels];
+            clip.GetData(samples, 0);
+            var wav = EncodePcm16Wav(samples, clip.channels, clip.frequency);
+            Destroy(clip);
+
+            requestGeneration++;
+            var generation = requestGeneration;
+            voiceSource?.Stop();
+            using var request = new UnityWebRequest(ConversationEndpoint, UnityWebRequest.kHttpVerbPOST)
+            {
+                uploadHandler = new UploadHandlerRaw(wav),
+                downloadHandler = new DownloadHandlerBuffer(),
+                timeout = ConversationTimeoutSeconds
+            };
+            request.SetRequestHeader("Content-Type", "audio/wav");
+            yield return request.SendWebRequest();
+            conversationInProgress = false;
+
+            if (generation != requestGeneration)
+            {
+                yield break;
+            }
+            if (request.result != UnityWebRequest.Result.Success)
+            {
+                ShowLine("The dark heard you, but did not answer.", "microphone-fallback");
+                Debug.LogWarning($"[Dread Director] Microphone conversation failed: HTTP {request.responseCode}.", this);
+                yield break;
+            }
+
+            var response = JsonUtility.FromJson<NarrationResponse>(request.downloadHandler.text);
+            if (response == null || string.IsNullOrWhiteSpace(response.text))
+            {
+                ShowLine("The dark heard you, but did not answer.", "microphone-fallback");
+                yield break;
+            }
+
+            ShowLine(response.text, response.source);
+            if (IsLoopbackAudioUrl(response.audioUrl))
+            {
+                yield return PlayAudio(response.audioUrl, generation);
+            }
         }
 
         private IEnumerator RequestNarration(string eventLabel, int generation)
@@ -195,9 +323,59 @@ namespace DreadDirector.Presentation
             return pool[index];
         }
 
+        private static byte[] EncodePcm16Wav(float[] samples, int channels, int sampleRate)
+        {
+            const int headerSize = 44;
+            var dataLength = samples.Length * sizeof(short);
+            var output = new byte[headerSize + dataLength];
+            WriteAscii(output, 0, "RIFF");
+            WriteInt32(output, 4, 36 + dataLength);
+            WriteAscii(output, 8, "WAVE");
+            WriteAscii(output, 12, "fmt ");
+            WriteInt32(output, 16, 16);
+            WriteInt16(output, 20, 1);
+            WriteInt16(output, 22, (short)channels);
+            WriteInt32(output, 24, sampleRate);
+            WriteInt32(output, 28, sampleRate * channels * sizeof(short));
+            WriteInt16(output, 32, (short)(channels * sizeof(short)));
+            WriteInt16(output, 34, 16);
+            WriteAscii(output, 36, "data");
+            WriteInt32(output, 40, dataLength);
+            for (var i = 0; i < samples.Length; i++)
+            {
+                WriteInt16(output, headerSize + i * sizeof(short), (short)(Mathf.Clamp(samples[i], -1f, 1f) * short.MaxValue));
+            }
+            return output;
+        }
+
+        private static void WriteAscii(byte[] output, int offset, string value)
+        {
+            Encoding.ASCII.GetBytes(value, 0, value.Length, output, offset);
+        }
+
+        private static void WriteInt16(byte[] output, int offset, short value)
+        {
+            output[offset] = (byte)value;
+            output[offset + 1] = (byte)(value >> 8);
+        }
+
+        private static void WriteInt32(byte[] output, int offset, int value)
+        {
+            output[offset] = (byte)value;
+            output[offset + 1] = (byte)(value >> 8);
+            output[offset + 2] = (byte)(value >> 16);
+            output[offset + 3] = (byte)(value >> 24);
+        }
+
         private static bool IsAllowed(string eventLabel)
         {
             return eventLabel != null && OfflineLines.ContainsKey(eventLabel);
+        }
+
+        private static bool IsLoopbackEndpoint(string value)
+        {
+            return Uri.TryCreate(value, UriKind.Absolute, out var uri) &&
+                   (uri.Scheme == Uri.UriSchemeHttp || uri.Scheme == Uri.UriSchemeHttps) && uri.IsLoopback;
         }
 
         private static bool IsLoopbackAudioUrl(string value)

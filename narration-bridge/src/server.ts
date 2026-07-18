@@ -3,10 +3,11 @@ import { stat } from "node:fs/promises";
 import { createServer, type IncomingMessage, type ServerResponse } from "node:http";
 import { fileURLToPath } from "node:url";
 import { loadConfig } from "./config.js";
-import { createNarration, isAllowedEvent } from "./narration.js";
+import { createConversationNarration, createNarration, isAllowedEvent } from "./narration.js";
 
 const config = loadConfig();
-const maxBodyBytes = 4_096;
+const maxJsonBodyBytes = 4_096;
+const maxWavBodyBytes = 512_000;
 const audioDirectory = fileURLToPath(new URL("../.runtime/audio/", import.meta.url));
 
 function sendJson(response: ServerResponse, status: number, value: unknown): void {
@@ -18,16 +19,24 @@ function sendJson(response: ServerResponse, status: number, value: unknown): voi
   response.end(JSON.stringify(value));
 }
 
-async function readJson(request: IncomingMessage): Promise<unknown> {
+async function readBody(request: IncomingMessage, maxBytes: number): Promise<Buffer> {
   const chunks: Buffer[] = [];
   let bytes = 0;
   for await (const chunk of request) {
     const buffer = Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk);
     bytes += buffer.length;
-    if (bytes > maxBodyBytes) throw new Error("body-too-large");
+    if (bytes > maxBytes) throw new Error("body-too-large");
     chunks.push(buffer);
   }
-  return JSON.parse(Buffer.concat(chunks).toString("utf8")) as unknown;
+  return Buffer.concat(chunks);
+}
+
+async function readJson(request: IncomingMessage): Promise<unknown> {
+  return JSON.parse((await readBody(request, maxJsonBodyBytes)).toString("utf8")) as unknown;
+}
+
+function audioUrl(fileName: string | undefined): string | null {
+  return fileName === undefined ? null : `http://${config.host}:${config.port}/audio/${fileName}`;
 }
 
 async function serveAudio(pathname: string, response: ServerResponse): Promise<boolean> {
@@ -53,7 +62,11 @@ const server = createServer(async (request, response) => {
   try {
     const url = new URL(request.url ?? "/", `http://${config.host}:${config.port}`);
     if (request.method === "GET" && url.pathname === "/health") {
-      sendJson(response, 200, { status: "ok", cloudEnabled: config.cloudEnabled });
+      sendJson(response, 200, {
+        status: "ok",
+        cloudEnabled: config.cloudEnabled,
+        microphoneConversationEnabled: config.microphoneConversationEnabled,
+      });
       return;
     }
 
@@ -71,10 +84,33 @@ const server = createServer(async (request, response) => {
         event: result.event,
         text: result.text,
         source: result.source,
-        audioUrl: result.audioFileName === undefined
-          ? null
-          : `http://${config.host}:${config.port}/audio/${result.audioFileName}`,
+        audioUrl: audioUrl(result.audioFileName),
       });
+      return;
+    }
+
+    if (request.method === "POST" && url.pathname === "/v1/conversation") {
+      if (!config.microphoneConversationEnabled) {
+        sendJson(response, 403, { error: "microphone-disabled" });
+        return;
+      }
+      if (!(request.headers["content-type"] ?? "").toLowerCase().startsWith("audio/wav")) {
+        sendJson(response, 415, { error: "wav-required" });
+        return;
+      }
+      const wav = await readBody(request, maxWavBodyBytes);
+      try {
+        const result = await createConversationNarration(wav, config);
+        sendJson(response, 200, {
+          text: result.text,
+          source: result.source,
+          audioUrl: audioUrl(result.audioFileName),
+        });
+      } catch (error) {
+        const code = error instanceof Error ? error.message : "conversation-failed";
+        const status = code === "invalid-wav" ? 400 : code === "microphone-disabled" ? 403 : 502;
+        sendJson(response, status, { error: code });
+      }
       return;
     }
 
@@ -86,5 +122,5 @@ const server = createServer(async (request, response) => {
 });
 
 server.listen(config.port, config.host, () => {
-  console.log(`[Dread Director] Narration bridge listening on http://${config.host}:${config.port}; cloud=${config.cloudEnabled ? "enabled" : "disabled"}.`);
+  console.log(`[Dread Director] Narration bridge listening on http://${config.host}:${config.port}; cloud=${config.cloudEnabled ? "enabled" : "disabled"}; microphone=${config.microphoneConversationEnabled ? "enabled" : "disabled"}.`);
 });

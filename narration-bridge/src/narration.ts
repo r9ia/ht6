@@ -70,16 +70,40 @@ export function offlineLine(event: NarrationEvent, random: () => number = Math.r
   return pool[index]!;
 }
 
-function cleanGeneratedText(value: string): string {
-  return value
+const MAX_GENERATED_WORDS = 15;
+const MAX_GENERATED_CHARACTERS = 180;
+const SCARY_SYSTEM_INSTRUCTION = [
+  "You are a deeply unsettling, cinematic monster voice stalking an explorer through the Backrooms.",
+  "Sound slow, malicious, ominous, and descriptive while remaining PG-13.",
+  "Never use conversational filler, emojis, markdown, names, health claims, or instructions.",
+  "Respond with exactly one intense line of 10 to 15 words and never break character.",
+].join(" ");
+const EVENT_SYSTEM_INSTRUCTION = `${SCARY_SYSTEM_INSTRUCTION} You receive only fixed gameplay events; never imply that you heard speech or observed personal data.`;
+const CONVERSATION_SYSTEM_INSTRUCTION = `${SCARY_SYSTEM_INSTRUCTION} Respond to the player's short audio without repeating names, identity, health information, or private details.`;
+
+export interface ConversationNarrationResult {
+  readonly text: string;
+  readonly source: "gemini" | "gemini-elevenlabs";
+  readonly audioFileName?: string;
+}
+
+export function cleanGeneratedText(value: string): string {
+  const normalized = value
     .replace(/[\r\n]+/gu, " ")
     .replace(/[<>]/gu, "")
     .replace(/\s+/gu, " ")
-    .trim()
-    .slice(0, 220);
+    .trim();
+  if (normalized.length === 0) return "";
+
+  return normalized
+    .split(" ")
+    .slice(0, MAX_GENERATED_WORDS)
+    .join(" ")
+    .slice(0, MAX_GENERATED_CHARACTERS)
+    .trim();
 }
 
-async function generateGeminiLine(event: NarrationEvent, fallback: string, config: BridgeConfig): Promise<string | null> {
+async function requestGemini(parts: Array<Record<string, unknown>>, systemInstruction: string, config: BridgeConfig): Promise<string | null> {
   if (!config.cloudEnabled || config.geminiApiKey.length === 0) return null;
 
   const endpoint = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(config.geminiModel)}:generateContent?key=${encodeURIComponent(config.geminiApiKey)}`;
@@ -87,11 +111,9 @@ async function generateGeminiLine(event: NarrationEvent, fallback: string, confi
     method: "POST",
     headers: { "content-type": "application/json" },
     body: JSON.stringify({
-      contents: [{
-        role: "user",
-        parts: [{ text: `Write one short PG-13 monster line, maximum 22 words, for the fixed game event '${event}'. No names, biometrics, health claims, instructions, or markdown. Tone reference: ${fallback}` }],
-      }],
-      generationConfig: { temperature: 0.7, maxOutputTokens: 48 },
+      systemInstruction: { parts: [{ text: systemInstruction }] },
+      contents: [{ role: "user", parts }],
+      generationConfig: { temperature: 0.85, maxOutputTokens: 40 },
     }),
     signal: AbortSignal.timeout(config.providerTimeoutMs),
   });
@@ -104,6 +126,14 @@ async function generateGeminiLine(event: NarrationEvent, fallback: string, confi
   if (typeof raw !== "string") return null;
   const cleaned = cleanGeneratedText(raw);
   return cleaned.length > 0 ? cleaned : null;
+}
+
+async function generateGeminiLine(event: NarrationEvent, fallback: string, config: BridgeConfig): Promise<string | null> {
+  return requestGemini(
+    [{ text: `Respond to the fixed gameplay event '${event}' with one 10-to-15-word monster line. Tone reference: ${fallback}` }],
+    EVENT_SYSTEM_INSTRUCTION,
+    config,
+  );
 }
 
 async function synthesizeElevenLabs(text: string, config: BridgeConfig): Promise<string | null> {
@@ -119,7 +149,7 @@ async function synthesizeElevenLabs(text: string, config: BridgeConfig): Promise
     },
     body: JSON.stringify({
       text,
-      model_id: "eleven_multilingual_v2",
+      model_id: config.elevenLabsModelId,
       voice_settings: { stability: 0.62, similarity_boost: 0.72 },
     }),
     signal: AbortSignal.timeout(config.providerTimeoutMs),
@@ -134,6 +164,26 @@ async function synthesizeElevenLabs(text: string, config: BridgeConfig): Promise
   const fileName = `${randomUUID()}.mp3`;
   await writeFile(join(runtimeDirectory, fileName), audio);
   return fileName;
+}
+
+export async function createConversationNarration(audioWav: Buffer, config: BridgeConfig): Promise<ConversationNarrationResult> {
+  if (!config.microphoneConversationEnabled) throw new Error("microphone-disabled");
+  if (!config.cloudEnabled || config.geminiApiKey.length === 0) throw new Error("gemini-unavailable");
+  if (audioWav.length < 44 || audioWav.toString("ascii", 0, 4) !== "RIFF") throw new Error("invalid-wav");
+
+  const text = await requestGemini([
+    { inlineData: { mimeType: "audio/wav", data: audioWav.toString("base64") } },
+    { text: "Listen to this short message and answer in character without quoting it." },
+  ], CONVERSATION_SYSTEM_INSTRUCTION, config);
+  if (text === null) throw new Error("gemini-empty-response");
+
+  try {
+    const audioFileName = await synthesizeElevenLabs(text, config);
+    if (audioFileName !== null) return { text, source: "gemini-elevenlabs", audioFileName };
+  } catch {
+    // A text response is still useful when optional voice synthesis fails.
+  }
+  return { text, source: "gemini" };
 }
 
 export async function createNarration(event: NarrationEvent, config: BridgeConfig): Promise<NarrationResult> {

@@ -5,10 +5,12 @@ export interface BridgeConfig {
   readonly host: string;
   readonly port: number;
   readonly cloudEnabled: boolean;
+  readonly microphoneConversationEnabled: boolean;
   readonly geminiApiKey: string;
   readonly geminiModel: string;
   readonly elevenLabsApiKey: string;
   readonly elevenLabsVoiceId: string;
+  readonly elevenLabsModelId: string;
   readonly providerTimeoutMs: number;
 }
 
@@ -48,10 +50,12 @@ export function loadConfig(): BridgeConfig {
     host,
     port: parsePort(process.env.NARRATION_BRIDGE_PORT),
     cloudEnabled: process.env.ENABLE_CLOUD_NARRATION === "true",
+    microphoneConversationEnabled: process.env.ENABLE_MICROPHONE_CONVERSATION === "true",
     geminiApiKey: process.env.GEMINI_API_KEY ?? "",
     geminiModel: process.env.GEMINI_MODEL ?? "gemini-2.0-flash",
     elevenLabsApiKey: process.env.ELEVENLABS_API_KEY ?? "",
     elevenLabsVoiceId: process.env.ELEVENLABS_VOICE_ID ?? "",
-    providerTimeoutMs: 4_000,
+    elevenLabsModelId: process.env.ELEVENLABS_MODEL_ID?.trim() || "eleven_multilingual_v2",
+    providerTimeoutMs: 8_000,
   };
 }

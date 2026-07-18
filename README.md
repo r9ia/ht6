@@ -42,7 +42,7 @@ Unity receives high-level messages only:
 
 ## Optional narration bridge
 
-`narration-bridge/` is a local TypeScript presentation service with rotating, non-repeating response pools adapted from the `smartspectra` branch and opt-in Gemini/ElevenLabs enrichment. It accepts only allowlisted gameplay event labels, never biometrics, identity, or microphone audio. When ElevenLabs audio is available, Unity plays it from a spatial voice anchor on the monster; subtitles remain the offline fallback.
+`narration-bridge/` is a local TypeScript presentation service with rotating, non-repeating response pools adapted from the `smartspectra` branch and opt-in Gemini/ElevenLabs enrichment. Normal narration accepts only allowlisted gameplay event labels, never biometrics or identity. An independently gated push-to-talk mode can accept a five-second in-memory WAV from Unity when the player presses `V`; enabling it explicitly sends that raw clip to Gemini and returns optional ElevenLabs audio through the spatial monster voice. Input audio is not written to disk, and subtitles remain the offline fallback.
 
 ```powershell
 Copy-Item .env.example .env

@@ -120,3 +120,6 @@ narration-bridge/.runtime/
 # Accidental nested Unity project and generated solution format
 /My project/
 *.slnx
+
+# Local vendor SDK source and binary packages
+.local/smartspectra-sdk/

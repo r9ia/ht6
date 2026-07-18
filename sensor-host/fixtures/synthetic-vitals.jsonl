@@ -1,0 +1,6 @@
+# Synthetic demo data only; no participant measurements.
+{"version":1,"type":"vitals","timestampUs":1000000,"signalValid":false,"validationCode":1,"pulseBpm":0.0,"pulseConfidence":0.0,"fear":0.0,"baevsky":0.0,"hrvConfidence":0.0,"breathingBpm":0.0,"breathingConfidence":0.0,"talking":false}
+{"version":1,"type":"vitals","timestampUs":1200000,"signalValid":true,"validationCode":0,"pulseBpm":72.0,"pulseConfidence":88.0,"fear":8.0,"baevsky":0.0,"hrvConfidence":0.0,"breathingBpm":0.0,"breathingConfidence":0.0,"talking":false}
+{"version":1,"type":"vitals","timestampUs":1400000,"signalValid":true,"validationCode":0,"pulseBpm":78.0,"pulseConfidence":91.0,"fear":24.0,"baevsky":0.0,"hrvConfidence":0.0,"breathingBpm":15.0,"breathingConfidence":0.0,"talking":false}
+{"version":1,"type":"vitals","timestampUs":1600000,"signalValid":true,"validationCode":0,"pulseBpm":86.0,"pulseConfidence":93.0,"fear":52.0,"baevsky":0.0,"hrvConfidence":0.0,"breathingBpm":19.0,"breathingConfidence":0.0,"talking":true}
+{"version":1,"type":"vitals","timestampUs":1800000,"signalValid":true,"validationCode":0,"pulseBpm":80.0,"pulseConfidence":90.0,"fear":18.0,"baevsky":0.0,"hrvConfidence":0.0,"breathingBpm":16.0,"breathingConfidence":72.0,"talking":false}
