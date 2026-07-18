@@ -6,15 +6,15 @@ namespace DreadDirector.Horror
     public sealed class LightFlicker : MonoBehaviour
     {
         public Light RoomLight;
-        [Min(0f)] public float CalmIntensity = 1.7f;
-        [Min(0f)] public float TenseIntensity = 0.7f;
+        [Min(0f)] public float CalmIntensity = 1.95f;
+        [Min(0f)] public float TenseIntensity = 0.8f;
         public Color CalmColor = new Color(0.95f, 0.93f, 0.78f);
         public Color TenseColor = new Color(0.7f, 0.08f, 0.11f);
 
         // Flat ambient endpoints. Backrooms read as unnaturally, flatly bright when calm; the
         // room curdles to a dim red as Director tension rises.
-        private static readonly Color CalmAmbient = new Color(0.42f, 0.40f, 0.31f);
-        private static readonly Color TenseAmbient = new Color(0.20f, 0.05f, 0.055f);
+        private static readonly Color CalmAmbient = new Color(0.56f, 0.54f, 0.43f);
+        private static readonly Color TenseAmbient = new Color(0.22f, 0.06f, 0.06f);
 
         private float tension;
         private float flickerUntil;
