@@ -12,11 +12,11 @@ namespace DreadDirector.Horror
     public sealed class LightFlicker : MonoBehaviour
     {
         public Light RoomLight;
-        [Min(0f)] public float CalmIntensity = 1.6f;
+        [Min(0f)] public float CalmIntensity = 1.68f;
         public Color CalmColor = new Color(0.95f, 0.93f, 0.78f);
 
         // Constant flat ambient. Does NOT react to Director tension.
-        private static readonly Color SteadyAmbient = new Color(0.44f, 0.42f, 0.34f);
+        private static readonly Color SteadyAmbient = new Color(0.48f, 0.46f, 0.37f);
 
         private void Update()
         {
