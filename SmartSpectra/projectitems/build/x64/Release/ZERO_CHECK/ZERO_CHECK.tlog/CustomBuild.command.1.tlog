@@ -1,0 +1,10 @@
+^C:\USERS\ADITI\PROJECTS\HT6\SMARTSPECTRA\PROJECTITEMS\BUILD\CMAKEFILES\4C00DA608A7A1E10B0BEB040F91D4BCB\GENERATE.STAMP.RULE
+setlocal
+"C:\Program Files (x86)\Microsoft Visual Studio\18\BuildTools\Common7\IDE\CommonExtensions\Microsoft\CMake\CMake\bin\cmake.exe" -SC:/Users/Aditi/projects/ht6/SmartSpectra/projectitems -BC:/Users/Aditi/projects/ht6/SmartSpectra/projectitems/build --check-stamp-list CMakeFiles/generate.stamp.list --vs-solution-file C:/Users/Aditi/projects/ht6/SmartSpectra/projectitems/build/FearDetector.slnx
+if %errorlevel% neq 0 goto :cmEnd
+:cmEnd
+endlocal & call :cmErrorLevel %errorlevel% & goto :cmDone
+:cmErrorLevel
+exit /b %1
+:cmDone
+if %errorlevel% neq 0 goto :VCEnd

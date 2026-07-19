@@ -1,0 +1,13 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="18.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <CustomBuild Include="C:\Users\Aditi\projects\ht6\SmartSpectra\projectitems\build\CMakeFiles\4c00da608a7a1e10b0beb040f91d4bcb\generate.stamp.rule">
+      <Filter>CMake Rules</Filter>
+    </CustomBuild>
+  </ItemGroup>
+  <ItemGroup>
+    <Filter Include="CMake Rules">
+      <UniqueIdentifier>{E10A6F82-ADCE-3705-9B4D-01F611EC371D}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+</Project>

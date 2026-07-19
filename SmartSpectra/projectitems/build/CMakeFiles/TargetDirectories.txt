@@ -1,0 +1,3 @@
+C:/Users/Aditi/projects/ht6/SmartSpectra/projectitems/build/CMakeFiles/fear_detector.dir
+C:/Users/Aditi/projects/ht6/SmartSpectra/projectitems/build/CMakeFiles/ALL_BUILD.dir
+C:/Users/Aditi/projects/ht6/SmartSpectra/projectitems/build/CMakeFiles/ZERO_CHECK.dir
