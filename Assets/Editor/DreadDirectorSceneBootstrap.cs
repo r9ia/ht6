@@ -19,7 +19,7 @@ namespace DreadDirector.Editor
         private const string ScenePath = "Assets/Scenes/DreadDirectorNightWatch.unity";
         private const string GeneratedFolder = "Assets/Generated/DreadDirector";
         private const string AutomaticBuildRevisionKey = "DreadDirector.AutomaticSceneBuildRevision";
-        private const string AutomaticBuildRevision = "backrooms-procedural-v17";
+        private const string AutomaticBuildRevision = "backrooms-procedural-v18";
 
         [InitializeOnLoadMethod]
         private static void ScheduleMissingSceneBuild()
@@ -59,10 +59,10 @@ namespace DreadDirector.Editor
             var scene = EditorSceneManager.NewScene(NewSceneSetup.EmptyScene, NewSceneMode.Single);
             RenderSettings.fog = true;
             RenderSettings.fogMode = FogMode.ExponentialSquared;
-            RenderSettings.fogColor = new Color(0.1025f, 0.1025f, 0.08f);
-            RenderSettings.fogDensity = 0.039f;
+            RenderSettings.fogColor = new Color(0.101f, 0.101f, 0.079f);
+            RenderSettings.fogDensity = 0.0405f;
             RenderSettings.ambientMode = UnityEngine.Rendering.AmbientMode.Flat;
-            RenderSettings.ambientLight = new Color(0.50f, 0.48f, 0.385f);
+            RenderSettings.ambientLight = new Color(0.47f, 0.45f, 0.36f);
 
             var apparitionMaterial = GetOrCreateMaterial("Apparition", new Color(0.28f, 0.01f, 0.025f), new Color(0.8f, 0f, 0.015f));
 
@@ -224,7 +224,7 @@ namespace DreadDirector.Editor
                     var fill = fillObject.AddComponent<Light>();
                     fill.type = LightType.Point;
                     fill.range = 18f;
-                    fill.intensity = 1.36f;
+                    fill.intensity = 1.3f;
                     fill.color = new Color(0.98f, 0.96f, 0.82f);
                     fill.shadows = LightShadows.None;
                     fillLights.Add(fill);
@@ -437,6 +437,14 @@ namespace DreadDirector.Editor
             contract.Apparition = apparition;
             contract.Death = death;
             death.Contract = contract;
+
+            // Continuous microphone loudness feeds the creature's intensity (capped, so it agitates
+            // the creature without fully maxing it). Yields the mic to push-to-talk when needed.
+            var micInput = systems.AddComponent<MicIntensityInput>();
+            micInput.Apparition = apparition;
+            micInput.Narration = narration;
+            micInput.DebugHud = hud;
+
             return systems;
         }
 

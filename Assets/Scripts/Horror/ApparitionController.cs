@@ -57,6 +57,7 @@ namespace DreadDirector.Horror
         private bool backingOff;
         private bool initialized;
         private bool hasCaught;
+        private float noiseIntensity;
         private float nextJumpScareTime;
 
         private void Awake()
@@ -91,7 +92,10 @@ namespace DreadDirector.Horror
             }
 
             ResolveTarget();
-            currentIntensity = Mathf.MoveTowards(currentIntensity, requestedIntensity, IntensityResponse * Time.deltaTime);
+            // Director intensity is the baseline; live environmental noise (mic loudness) adds on
+            // top so a loud room agitates the creature. Noise is ignored while backing off.
+            var targetIntensity = backingOff ? 0f : Mathf.Max(requestedIntensity, noiseIntensity);
+            currentIntensity = Mathf.MoveTowards(currentIntensity, targetIntensity, IntensityResponse * Time.deltaTime);
 
             if (backingOff || Target == null)
             {
@@ -168,6 +172,13 @@ namespace DreadDirector.Horror
         public void Reveal(float intensity)
         {
             SetIntensity(intensity);
+        }
+
+        /// <summary>Live environmental noise (e.g., microphone loudness) added on top of the
+        /// Director intensity, so a loud room agitates the creature. Ignored while backing off.</summary>
+        public void SetNoiseLevel(float value)
+        {
+            noiseIntensity = Mathf.Clamp01(value);
         }
 
         /// <summary>Panic / back-off: the creature retreats and stops hunting until re-armed.</summary>

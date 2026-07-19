@@ -91,6 +91,10 @@ namespace DreadDirector.Presentation
         private string activeMicrophoneDevice;
         private int requestGeneration;
 
+        /// <summary>True while a push-to-talk clip is being captured, so other mic users
+        /// (the continuous loudness listener) can yield the single microphone device.</summary>
+        public bool ConversationInProgress => conversationInProgress;
+
         private void Awake()
         {
             voiceSource = GetComponent<AudioSource>();
