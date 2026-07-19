@@ -29,27 +29,16 @@ high-level cues (escalate, panic, recover) and connect their own reactions to
 them, such as enemy behavior, music, lighting, or pacing.
 
 Our reference build, Night Watch, is a demo where a stalking creature hunts
-harder when you panic and backs off when your calm, with a crypto system (using unifold + solana)
+harder when you stay calm and backs off when you panic, with a survival contract
 that rewards keeping your composure. It runs the full loop from camera to
 gameplay. It is only one example, though. Nothing in the framework is tied to
-that style of game, or to games at all. It is a general way for software to react
-to how a person feels.
+that style of game, or to games at all.
 
-## Beyond gaming
-
-Games are our first focus, but the same three signals and the same sense, decide,
-and adapt loop fit anywhere software could use a read on how someone feels. In VR
-and simulation training, it can support stress inoculation by raising the
-pressure only while the trainee stays composed and backing off before they are
-overwhelmed. In film, immersive theater, and theme parks, scenes can pace
-themselves to how the audience is actually reacting. In UX and product research,
-teams can measure real engagement and stress without stopping to run a survey. In
-wellness and biofeedback, it can drive breathing and calming tools that respond
-to your current state. In accessibility, it can lower intensity, difficulty, or
-sensory load when someone starts to get overwhelmed. It is the same framework and
-the same privacy rules, pointed at a different experience.
-
-A few concrete examples:
+The same three signals and the same sense, decide, and adapt loop work anywhere
+software could use a read on how someone feels: VR training that raises pressure
+only while a trainee stays composed, interactive media that paces itself to the
+audience, and UX research, wellness tools, or accessibility features that ease
+off when someone is overwhelmed. A few concrete examples:
 
 - Sales and client calls: a live read on how engaged or tense the other person
   is, so the rep knows when to ease off or dig in. Best as a consented,
@@ -81,29 +70,22 @@ lighting, audio stings, the death sequence, and the composure-based reward
 contract). Every layer also has a fake or replay path, so we can build and demo
 the whole thing with no camera or sensor connected.
 
-## Why our own hardware
+We built our own sensor device on purpose. A webcam alone can estimate heart
+rate, but it is easy to throw off by lighting, movement, and skin tone, and
+slower signals like HRV need a warm-up before they can be trusted. A contact
+pulse sensor gives a clean heartbeat from the first second, so we use it to
+anchor and sanity-check the camera estimate, cover the cold-start gap, and catch
+drift. Fusing the two is more reliable than either one alone, and running it on a
+dedicated Raspberry Pi produces the same calibrated signal on every setup instead
+of making a studio babysit camera drivers and lighting.
 
-A webcam on its own can estimate heart rate, but it is easy to throw off.
-Lighting, movement, and skin tone all affect it, and its slower signals like HRV
-need a warm-up period before they can be trusted. A contact pulse sensor does not
-have those problems. It gives a clean heartbeat from the first second, so we use
-it as a reference to anchor and sanity-check the camera estimate, cover the
-cold-start gap while the camera settles, and catch the moments when the camera
-drifts. Fusing the two is more reliable than either one alone. Running it all on
-a dedicated Raspberry Pi keeps every raw sample on one local device, frees the
-game machine from doing any sensing, and produces the same calibrated signal on
-every setup. A studio does not have to babysit camera drivers and lighting. They
-plug in one small box that always behaves the same way.
-
-Privacy is the other big reason, and maybe the more important one. People are
-understandably wary of letting a game watch them through their webcam and read
-their body, and they should not have to take that on faith. Because the sensing
-lives on a separate device and only sends out the three simple signals, the game
-never sees video, a heartbeat trace, or anything that identifies the person. The
-raw data stays on the box. The device is open source too, so anyone can check
-exactly what it measures and what it sends instead of being asked to trust it. A
-small device you can inspect is a lot easier to be comfortable with than a game
-quietly reading your webcam.
+Privacy is the other reason, and maybe the bigger one. People are understandably
+wary of a game watching them through their webcam and reading their body. Because
+the sensing lives on a separate device and only sends out the three simple
+signals, the game never sees video, a heartbeat trace, or anything that
+identifies the person. The raw data stays on the box, and the device is open
+source, so anyone can check what it measures and what it sends instead of being
+asked to trust it.
 
 ## Challenges we ran into
 
@@ -151,7 +133,7 @@ quietly reading your webcam.
   reactions, and a per-session view of where players tensed up.
 - More signals and better decisions as the models improve.
 - Pilots outside gaming, working with teams in training, interactive media, and
-  research to test the framework in real use (see Beyond gaming).
+  research to test the framework in real use.
 - A standardized sensor device so studios integrate once and get the same signals
   everywhere.
 - Support for more engines beyond Unity, such as Unreal and Godot, on the same
