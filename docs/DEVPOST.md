@@ -95,6 +95,16 @@ game machine from doing any sensing, and produces the same calibrated signal on
 every setup. A studio does not have to babysit camera drivers and lighting. They
 plug in one small box that always behaves the same way.
 
+Privacy is the other big reason, and maybe the more important one. People are
+understandably wary of letting a game watch them through their webcam and read
+their body, and they should not have to take that on faith. Because the sensing
+lives on a separate device and only sends out the three simple signals, the game
+never sees video, a heartbeat trace, or anything that identifies the person. The
+raw data stays on the box. The device is open source too, so anyone can check
+exactly what it measures and what it sends instead of being asked to trust it. A
+small device you can inspect is a lot easier to be comfortable with than a game
+quietly reading your webcam.
+
 ## Challenges we ran into
 
 - Raw biosignals are noisy and slow to trust. HRV is not reliable for about the
