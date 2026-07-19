@@ -9,13 +9,15 @@ namespace DreadDirector.Presentation
 {
     /// <summary>
     /// The game-facing "Night Watch Contract". A one-minute run where a Solana balance accrues
-    /// faster the calmer (less scared) the player stays. When the run ends — by surviving the full
-    /// minute or by being caught — the player's composure score is recorded to a local leaderboard
-    /// and they earn Solana proportional to how chill they stayed.
+    /// at a fixed rate once calibration completes. When the run ends — by surviving the full
+    /// minute or by being caught — the player's chill score and accrued balance are recorded to
+    /// a local leaderboard.
     ///
-    /// This is a local, cosmetic game economy (sandbox). It sends nothing anywhere; the separate
-    /// <see cref="UnifoldRewardBridgeClient"/> is the only module that talks to the reward bridge,
-    /// and only via an opaque claim. No biometrics or identity leave the machine.
+    /// This "SOL" figure is a local, cosmetic tally — deliberately independent of
+    /// <see cref="UnifoldRewardBridgeClient"/>'s real tiered bounty (claimed with [5]). This
+    /// class sends nothing anywhere itself; UnifoldRewardBridgeClient is the only module that
+    /// talks to the reward bridge, and only via an opaque claim. No biometrics or identity leave
+    /// the machine.
     /// </summary>
     public sealed class NightWatchContract : MonoBehaviour
     {
@@ -28,10 +30,8 @@ namespace DreadDirector.Presentation
         [Header("Contract")]
         [Tooltip("Length of a Night Watch run, in seconds.")]
         [Min(5f)] public float RunDuration = 60f;
-        [Tooltip("Max Solana accrued per second while perfectly calm.")]
-        [Min(0f)] public float BalanceRatePerSecond = 0.02f;
-        [Tooltip("Bonus Solana for surviving the full night.")]
-        [Min(0f)] public float SurvivalBonus = 0.5f;
+        [Tooltip("Fixed Solana accrued per second once calibration completes (0.001 SOL per 7 seconds).")]
+        [Min(0f)] public float BalanceRatePerSecond = 0.001f / 7f;
 
         private const int LeaderboardSize = 5;
         private const string ScoreKeyPrefix = "nightwatch_lb_score_";
@@ -105,10 +105,10 @@ namespace DreadDirector.Presentation
             }
 
             var dt = Time.deltaTime; // scaled: naturally pauses when the game is frozen on death
-            var fear = Director != null ? Mathf.Clamp01(Mathf.Max(Director.Arousal, Director.SustainedStress)) : 0f;
+            var fear = Director != null ? Mathf.Clamp01(Mathf.Max(Director.Noise, Director.Stress)) : 0f;
             var chill = 1f - fear;
 
-            balance += chill * BalanceRatePerSecond * dt;
+            balance += BalanceRatePerSecond * dt;
             chillTimeSum += chill * dt;
             elapsed += dt;
 
@@ -136,7 +136,7 @@ namespace DreadDirector.Presentation
             var avgChill = elapsed > 0.01 ? (float)(chillTimeSum / elapsed) : 0f;
             var survivedFraction = Mathf.Clamp01(1f - timeRemaining / RunDuration);
             lastScore = Mathf.RoundToInt(avgChill * 100f * (didSurvive ? 1f : survivedFraction));
-            lastSolana = Math.Round(balance + (didSurvive ? SurvivalBonus : 0.0), 4);
+            lastSolana = Math.Round(balance, 4);
             lastRank = RecordLeaderboard(lastScore, lastSolana);
 
             if (Player != null)
@@ -247,7 +247,7 @@ namespace DreadDirector.Presentation
                 return;
             }
 
-            GUI.Label(new Rect(x + 14f, y + 36f, w - 28f, 26f), $"◎ {balance:0.0000} SOL", balanceStyle);
+            GUI.Label(new Rect(x + 14f, y + 36f, w - 28f, 26f), $"◎ {balance:0.000} SOL", balanceStyle);
             var seconds = Mathf.CeilToInt(timeRemaining);
             GUI.Label(new Rect(x + 14f, y + 66f, w - 28f, 22f), $"TIME  0:{seconds:00}", bodyStyle);
         }
@@ -258,29 +258,38 @@ namespace DreadDirector.Presentation
 
             var cx = Screen.width * 0.5f;
             titleStyle.alignment = TextAnchor.MiddleCenter;
+            bodyStyle.alignment = TextAnchor.MiddleCenter;
+
+            // Stack every row from a running cursor (instead of fixed screen-height fractions)
+            // so rows can never crowd or overlap each other regardless of resolution.
+            var y = Screen.height * 0.2f;
+
             var title = survived ? "YOU SURVIVED THE NIGHT" : "YOU DIED";
             var titleColor = survived ? new Color(0.4f, 0.88f, 0.55f) : new Color(0.82f, 0.08f, 0.09f);
             bigStyle.normal.textColor = titleColor;
-            GUI.Label(new Rect(cx - 400f, Screen.height * 0.22f, 800f, 64f), title, bigStyle);
+            GUI.Label(new Rect(cx - 400f, y, 800f, 72f), title, bigStyle);
+            y += 72f + 24f;
 
-            GUI.Label(new Rect(cx - 400f, Screen.height * 0.22f + 70f, 800f, 26f),
-                $"Chill score {lastScore}/100      Earned ◎ {lastSolana:0.####} SOL" + (lastRank == 0 ? "      NEW BEST!" : string.Empty),
+            GUI.Label(new Rect(cx - 400f, y, 800f, 28f),
+                $"Chill score {lastScore}/100      Earned ◎ {lastSolana:0.000} SOL" + (lastRank == 0 ? "      NEW BEST!" : string.Empty),
                 bodyStyle);
+            y += 28f + 44f;
 
             // Leaderboard.
-            GUI.Label(new Rect(cx - 200f, Screen.height * 0.40f, 400f, 24f), "— LEADERBOARD (chillest nights) —", titleStyle);
-            var top = Screen.height * 0.40f + 30f;
+            GUI.Label(new Rect(cx - 200f, y, 400f, 24f), "— LEADERBOARD (chillest nights) —", titleStyle);
+            y += 24f + 16f;
             for (var i = 0; i < LeaderboardSize; i++)
             {
                 if (!PlayerPrefs.HasKey(ScoreKeyPrefix + i)) break;
                 var s = PlayerPrefs.GetInt(ScoreKeyPrefix + i);
                 var sol = PlayerPrefs.GetString(SolKeyPrefix + i, "0");
                 rowStyle.normal.textColor = i == lastRank ? new Color(0.98f, 0.85f, 0.35f) : new Color(0.8f, 0.85f, 0.82f);
-                GUI.Label(new Rect(cx - 200f, top + i * 26f, 400f, 24f), $"#{i + 1}   chill {s,3}/100     ◎ {sol} SOL", rowStyle);
+                GUI.Label(new Rect(cx - 200f, y, 400f, 26f), $"#{i + 1}   chill {s,3}/100     ◎ {sol} SOL", rowStyle);
+                y += 30f;
             }
 
-            bodyStyle.alignment = TextAnchor.MiddleCenter;
-            GUI.Label(new Rect(cx - 400f, Screen.height * 0.72f, 800f, 24f), "Press [R] to play again      ·      press [5] to claim your bounty", bodyStyle);
+            y = Mathf.Max(y + 30f, Screen.height * 0.82f);
+            GUI.Label(new Rect(cx - 400f, y, 800f, 24f), "Press [R] to play again      ·      press [5] to claim your bounty", bodyStyle);
             bodyStyle.alignment = TextAnchor.MiddleLeft;
         }
 

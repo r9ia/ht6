@@ -10,6 +10,7 @@ namespace DreadDirector.Player
         public Transform CameraTransform;
         [Min(0f)] public float MoveSpeed = 2.5f;
         [Min(0f)] public float MouseSensitivity = 0.1f;
+        [Min(0f)] public float KeyboardTurnSpeed = 90f;
         public float Gravity = -9.81f;
 
         private CharacterController characterController;
@@ -63,6 +64,7 @@ namespace DreadDirector.Player
             }
 
             HandleMovement(keyboard);
+            HandleKeyboardTurn(keyboard);
         }
 
         private void HandleLook(Mouse mouse)
@@ -96,6 +98,18 @@ namespace DreadDirector.Player
             verticalVelocity += Gravity * Time.deltaTime;
             movement.y = verticalVelocity;
             characterController.Move(movement * Time.deltaTime);
+        }
+
+        private void HandleKeyboardTurn(Keyboard keyboard)
+        {
+            var turn = 0f;
+            if (keyboard.aKey.isPressed || keyboard.leftArrowKey.isPressed) turn -= 1f;
+            if (keyboard.dKey.isPressed || keyboard.rightArrowKey.isPressed) turn += 1f;
+
+            if (turn != 0f)
+            {
+                transform.Rotate(Vector3.up * (turn * KeyboardTurnSpeed * Time.deltaTime));
+            }
         }
 
         private static void SetCursorLocked(bool locked)

@@ -7,7 +7,7 @@ Local, loopback-only service that powers the **Night Watch Contract**: players w
 Unity measures survival time and composure locally and folds them into one opaque achievement tier. The game sends only:
 
 ```json
-{ "version": 1, "claimId": "nightwatch_<opaque>", "tier": "composed_survivor" }
+{ "version": 1, "claimId": "nightwatch_<opaque>", "tier": "survivor" }
 ```
 
 No biometrics, Director scores, identity, or wallet ever cross into this bridge. The `claimId` is reused as Unifold's `external_user_id`, so Unifold receives no player identity either. QNX has no involvement.
@@ -42,8 +42,7 @@ Tiers ascend with survival duration and composure. Defaults (USD, capped by `UNI
 | Tier | Meaning | Default reward |
 | --- | --- | --- |
 | `endured` | Survived a meaningful stretch | 1.00 USDC |
-| `survivor` | Survived the full night | 1.50 USDC |
-| `composed_survivor` | Survived and held composure | 2.50 USDC |
+| `survivor` | Survived the full night | 2.50 USDC |
 | `unshaken` | Survived a long night, stayed very calm | 5.00 USDC |
 
 Defaults clear the sandbox per-transfer minimum (Base Sepolia USDC, ~0.85 USDC). Tune amounts and `UNIFOLD_MAX_REWARD_USD` for your own project.

@@ -17,8 +17,8 @@ namespace DreadDirector.Director
         public BiometricDebugHud DebugHud;
         public NarrationBridgeClient Narration;
 
-        public float Arousal { get; private set; }
-        public float SustainedStress { get; private set; }
+        public float Noise { get; private set; }
+        public float Stress { get; private set; }
         public float Composure { get; private set; }
         public float LastIntensity { get; private set; }
         public string LastEvent { get; private set; } = "Waiting for Director";
@@ -97,10 +97,10 @@ namespace DreadDirector.Director
 
         private void ApplyState(DirectorMessage message)
         {
-            Arousal = message.arousal;
-            SustainedStress = message.sustainedStress;
+            Noise = message.arousal;
+            Stress = message.sustainedStress;
             Composure = message.composure;
-            var stateIntensity = Mathf.Max(Arousal, SustainedStress * 0.75f);
+            var stateIntensity = Mathf.Max(Noise, Stress * 0.75f);
             LastIntensity = stateIntensity;
             LastEvent = "State update";
             LightFlicker?.SetTension(stateIntensity);
@@ -133,12 +133,10 @@ namespace DreadDirector.Director
         private void Panic(float intensity)
         {
             LastIntensity = Mathf.Clamp01(intensity);
-            LastEvent = "Panic / monster backing off";
-            LightFlicker?.BackOff();
-            Apparition?.Retreat();
-            AudioSting?.Hush();
-            DebugHud?.ShowEvent("PANIC DETECTED — MONSTER BACKING OFF");
-            Narration?.Announce("panic_backoff");
+            LastEvent = "Panic / jump scare";
+            Apparition?.TriggerJumpScare();
+            DebugHud?.ShowEvent("PANIC DETECTED — JUMP SCARE");
+            Narration?.Announce("escalation_high");
         }
 
         private void Recover()

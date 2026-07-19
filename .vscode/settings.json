@@ -18,5 +18,5 @@
         "*.sln": "*.csproj",
         "*.slnx": "*.csproj"
     },
-    "dotnet.defaultSolution": "ht6.slnx"
+    "dotnet.defaultSolution": "My project.slnx"
 }

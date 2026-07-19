@@ -44,8 +44,7 @@ test("tier allowlist accepts known tiers and rejects everything else", () => {
 
 test("reward tiers ascend with survival and composure", () => {
   assert.ok(rewardUsdForTier("endured") < rewardUsdForTier("survivor"));
-  assert.ok(rewardUsdForTier("survivor") < rewardUsdForTier("composed_survivor"));
-  assert.ok(rewardUsdForTier("composed_survivor") < rewardUsdForTier("unshaken"));
+  assert.ok(rewardUsdForTier("survivor") < rewardUsdForTier("unshaken"));
 });
 
 test("usd converts to token base units without float drift", () => {
@@ -79,10 +78,10 @@ test("claim validation enforces version, opaque id, and allowlisted tier", () =>
 
 test("mock claim pays the tier amount and reports mock mode", async () => {
   const rewards = createRewardService(makeConfig());
-  const result = await rewards.claim({ version: 1, claimId: "nightwatch_abc123", tier: "composed_survivor" });
+  const result = await rewards.claim({ version: 1, claimId: "nightwatch_abc123", tier: "survivor" });
   assert.equal(result.status, "completed");
   assert.equal(result.mode, "mock");
-  assert.equal(result.tier, "composed_survivor");
+  assert.equal(result.tier, "survivor");
   assert.equal(result.amountUsd, 2.5);
   assert.equal(result.amountBaseUnits, "2500000");
   assert.equal(result.reference, "mock_obt_nightwatch_abc123");

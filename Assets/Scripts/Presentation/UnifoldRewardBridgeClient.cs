@@ -1,5 +1,6 @@
 using System;
 using System.Collections;
+using System.Collections.Generic;
 using System.Text;
 using DreadDirector.Director;
 using DreadDirector.UI;
@@ -20,6 +21,16 @@ namespace DreadDirector.Presentation
     /// </summary>
     public sealed class UnifoldRewardBridgeClient : MonoBehaviour
     {
+        /// <summary>Three tiers, ascending by time (and calm, for the top one). Mirrors
+        /// REWARD_TIERS in unifold-bridge/src/rewards.ts — keep the two in sync. Lets the
+        /// game display the real payout amount before a claim is ever sent.</summary>
+        private static readonly Dictionary<string, double> TierAmountsUsd = new()
+        {
+            ["endured"] = 1.0,
+            ["survivor"] = 2.5,
+            ["unshaken"] = 5.0,
+        };
+
         [Serializable]
         private sealed class RewardRequest
         {
@@ -49,14 +60,12 @@ namespace DreadDirector.Presentation
         public BiometricDebugHud DebugHud;
 
         [Header("Reward eligibility (survive longer, stay calmer)")]
-        [Tooltip("Seconds survived before the smallest bounty (endured) unlocks.")]
-        [Min(0f)] public float EnduredSeconds = 45f;
+        [Tooltip("Seconds survived before the smallest bounty (endured) unlocks. Tuned to fit inside a default 60s run.")]
+        [Min(0f)] public float EnduredSeconds = 15f;
         [Tooltip("Seconds survived for the standard survivor bounty.")]
-        [Min(0f)] public float SurvivorSeconds = 90f;
-        [Tooltip("Seconds survived required for the top bounty.")]
-        [Min(0f)] public float LongNightSeconds = 180f;
-        [Tooltip("Average composure (higher = calmer) needed for the composed bonus.")]
-        public float CalmComposure = 0.15f;
+        [Min(0f)] public float SurvivorSeconds = 35f;
+        [Tooltip("Seconds survived required for the top 'unshaken' bounty.")]
+        [Min(0f)] public float LongNightSeconds = 55f;
         [Tooltip("Average composure needed for the top 'unshaken' bounty.")]
         public float VeryCalmComposure = 0.45f;
         [Tooltip("Average sustained stress must stay under this for the top bounty.")]
@@ -104,7 +113,7 @@ namespace DreadDirector.Presentation
             {
                 survivalSeconds += Time.unscaledDeltaTime;
                 composureSum += Director.Composure;
-                stressSum += Director.SustainedStress;
+                stressSum += Director.Stress;
                 sampleCount++;
             }
 
@@ -157,10 +166,6 @@ namespace DreadDirector.Presentation
             {
                 return "unshaken";
             }
-            if (survivalSeconds >= SurvivorSeconds && averageComposure >= CalmComposure)
-            {
-                return "composed_survivor";
-            }
             if (survivalSeconds >= SurvivorSeconds)
             {
                 return "survivor";
@@ -170,6 +175,15 @@ namespace DreadDirector.Presentation
                 return "endured";
             }
             return null;
+        }
+
+        /// <summary>The actual USDC amount the current run has earned (0 when no tier is met yet).
+        /// This is the same figure the [5] claim will pay out, so the HUD never shows a number
+        /// the player cannot actually collect.</summary>
+        public double EarnedAmountUsd()
+        {
+            var tier = EarnedTier();
+            return tier != null && TierAmountsUsd.TryGetValue(tier, out var amount) ? amount : 0.0;
         }
 
         private IEnumerator SendClaim(string claimId, string tier)
@@ -278,7 +292,6 @@ namespace DreadDirector.Presentation
             {
                 case "endured": return "Endured the Night";
                 case "survivor": return "Night Watch Survivor";
-                case "composed_survivor": return "Composed Survivor";
                 case "unshaken": return "Unshaken";
                 default: return "Night Watch bounty";
             }

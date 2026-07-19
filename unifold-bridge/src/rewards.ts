@@ -15,9 +15,7 @@ export const REWARD_TIERS = {
   /** Survived a meaningful stretch of the night. */
   endured: 1.0,
   /** Survived the full night. */
-  survivor: 1.5,
-  /** Survived the full night while holding composure — visibly less scared. */
-  composed_survivor: 2.5,
+  survivor: 2.5,
   /** Survived a long night and stayed remarkably calm throughout. */
   unshaken: 5.0,
 } as const;

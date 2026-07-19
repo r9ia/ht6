@@ -29,7 +29,7 @@ namespace DreadDirector.UI
             }
 
             EnsureStyles();
-            var panel = new Rect(18f, 18f, 355f, 240f);
+            var panel = new Rect(18f, 18f, 355f, 190f);
             GUI.Box(panel, GUIContent.none, panelStyle);
             GUI.Label(new Rect(34f, 31f, 320f, 28f), "DREAD DIRECTOR // NIGHT WATCH", titleStyle);
 
@@ -37,14 +37,14 @@ namespace DreadDirector.UI
                 ? $"CALIBRATING SIGNAL  {Calibration.Progress * 100f:000}%  ({Calibration.RemainingSeconds:00}s)"
                 : "SIGNAL CALIBRATED // ROOM ARMED";
             GUI.Label(new Rect(34f, 69f, 320f, 22f), calibrationText, labelStyle);
-            GUI.Label(new Rect(34f, 97f, 320f, 22f), $"AROUSAL           {Bridge.Arousal:0.00}", labelStyle);
-            GUI.Label(new Rect(34f, 121f, 320f, 22f), $"SUSTAINED STRESS  {Bridge.SustainedStress:0.00}", labelStyle);
+            GUI.Label(new Rect(34f, 97f, 320f, 22f), $"NOISE             {Bridge.Noise:0.00}", labelStyle);
+            GUI.Label(new Rect(34f, 121f, 320f, 22f), $"STRESS            {Bridge.Stress:0.00}", labelStyle);
             GUI.Label(new Rect(34f, 145f, 320f, 22f), $"COMPOSURE         {Bridge.Composure:+0.00;-0.00;0.00}", labelStyle);
-            GUI.Label(new Rect(34f, 169f, 320f, 22f), $"LAST EVENT        {Bridge.LastEvent}", labelStyle);
-            GUI.Label(new Rect(34f, 193f, 320f, 22f), $"SOURCE            {Bridge.LastSource}", labelStyle);
 
-            var currentEvent = Time.unscaledTime < eventUntil ? eventText : "[1] low  [2] high  [3] panic  [4] recover  [5] bounty";
-            GUI.Label(new Rect(34f, 223f, 320f, 22f), currentEvent, labelStyle);
+            if (Time.unscaledTime < eventUntil)
+            {
+                GUI.Label(new Rect(34f, 169f, 320f, 22f), eventText, labelStyle);
+            }
         }
 
         private void EnsureStyles()

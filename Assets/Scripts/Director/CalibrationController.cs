@@ -5,7 +5,7 @@ namespace DreadDirector.Director
     /// <summary>Tracks the initial non-medical signal calibration period used by the demo pacing.</summary>
     public sealed class CalibrationController : MonoBehaviour
     {
-        [Min(1f)] public float DurationSeconds = 60f;
+        [Min(1f)] public float DurationSeconds = 30f;
         public DirectorGameBridge Bridge;
 
         public float ElapsedSeconds { get; private set; }

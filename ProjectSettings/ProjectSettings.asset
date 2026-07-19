@@ -930,11 +930,11 @@ PlayerSettings:
   activeInputHandler: 1
   windowsGamepadBackendHint: 0
   enableDirectStorage: 0
-  cloudProjectId:
+  cloudProjectId: d5c0d157-d395-427f-95d7-de2b3d36f18a
   framebufferDepthMemorylessMode: 0
   qualitySettingsNames: []
-  projectName:
-  organizationId:
+  projectName: My project
+  organizationId: rgia
   cloudEnabled: 0
   legacyClampBlendShapeWeights: 0
   hmiLoadingImage: {fileID: 0}
